@@ -1,7 +1,7 @@
 import type { Cell, GameState, Order, PlayerId, Pos, Terrain, TurnEvent } from "../engine/types";
 import { applyOrder, cloneState, createGame, endTurn, legalOrders, unitsInDanger } from "../engine/game";
 import { isInCheck, findKing, pseudoMovesFor } from "../engine/moves";
-import { canDeployTo, canPlaceTerrain, createArmies, randomBattlefield, randomFormation, randomTerrainFor, seededRng, swapUnits, terrainCount } from "../engine/setup";
+import { canDeployTo, canPlaceTerrain, createArmies, randomBattlefield, randomTerrainFor, seededRng, swapUnits, terrainCount } from "../engine/setup";
 import { TERRAIN_QUOTA, deployRows, homeRows, inRows, opponent } from "../engine/rules";
 import { emptyGrid } from "../engine/game";
 import { canSee, visibleCells } from "../engine/vision";
@@ -12,6 +12,9 @@ import type { Hud } from "../ui/Hud";
 import { sfx } from "../audio/sfx";
 import { AiClient } from "./AiClient";
 import { FACTIONS } from "../render/art/unitArt";
+import { buildField, freshSeed, plainsField, type Field, type GameMode } from "./fields";
+
+export type { GameMode } from "./fields";
 
 export interface MatchOptions {
   opponent: "ai" | "hotseat";
@@ -19,11 +22,11 @@ export interface MatchOptions {
   ordersPerTurn: number;
   mode: GameMode;
   fog: boolean;
+  /** Chi battlefield (`Preset.id`); a random preset is drawn when missing. */
+  preset?: string;
 }
 
 export type DeployTool = "units" | Terrain;
-
-export type GameMode = "omega" | "chi" | "pi" | "alpha";
 
 type Phase = "idle" | "deploy" | "battle" | "over";
 
@@ -44,48 +47,41 @@ export class Match {
 
   constructor(private boardView: BoardView, private units: UnitView, private hud: Hud) {}
 
-  showcase(seed: number): void {
-    const field = randomBattlefield(seed);
+  /** Show a field on the board without starting anything: no fog, every unit visible. */
+  private show(field: Field): void {
     this.board = field.board;
     this.terrain = field.terrain;
     this.boardView.setTerrain(this.terrain);
     this.units.sync(this.board);
+    this.boardView.setFog(null);
+    this.units.setVisibility(() => true, this.board);
+  }
+
+  showcase(seed: number): void {
+    this.show(randomBattlefield(seed));
   }
 
   showcaseOpen(): void {
-    this.board = createArmies();
-    this.terrain = emptyGrid<Terrain>("flat");
-    this.boardView.setTerrain(this.terrain);
-    this.units.sync(this.board);
+    this.show(plainsField());
   }
 
   showcaseLand(seed: number): void {
-    this.board = emptyGrid<Cell>(null);
-    this.terrain = randomBattlefield(seed).terrain;
-    this.boardView.setTerrain(this.terrain);
-    this.units.sync(this.board);
+    this.show({ board: emptyGrid<Cell>(null), terrain: randomBattlefield(seed).terrain });
+  }
+
+  /** Live setup preview: the board a match with these options would start on. Fresh seed every call. */
+  preview(options: MatchOptions): void {
+    this.show(buildField(options, freshSeed()));
   }
 
   start(options: MatchOptions): void {
     this.options = options;
-    const seed = Math.floor(Math.random() * 1e9);
-    const field = options.mode === "omega" ? { board: createArmies(), terrain: emptyGrid<Terrain>("flat") } : randomBattlefield(seed);
-    if (options.mode === "alpha") {
-      const rng = seededRng(seed + 1);
-      randomFormation(field.board, field.terrain, 0, rng);
-      randomFormation(field.board, field.terrain, 1, rng);
-    }
-    this.board = field.board;
-    this.terrain = field.terrain;
+    this.show(buildField(options, freshSeed()));
     this.state = null;
     this.phase = "deploy";
     this.deployer = 0;
     this.tool = "units";
     this.selected = null;
-    this.boardView.setTerrain(this.terrain);
-    this.units.sync(this.board);
-    this.boardView.setFog(null);
-    this.units.setVisibility(() => true, this.board);
     if (options.mode === "pi" || options.mode === "alpha") return this.beginBattle();
     this.refreshDeploy();
   }
@@ -114,7 +110,7 @@ export class Match {
   }
 
   randomizeTerrain(): void {
-    randomTerrainFor(this.board, this.terrain, this.deployer, seededRng(Math.floor(Math.random() * 1e9)));
+    randomTerrainFor(this.board, this.terrain, this.deployer, seededRng(freshSeed()));
     this.boardView.setTerrain(this.terrain);
     sfx.terrain();
     this.refreshDeploy();
@@ -141,7 +137,7 @@ export class Match {
 
   private beginBattle(): void {
     if (this.options.opponent === "ai" && this.options.mode === "omega") {
-      randomTerrainFor(this.board, this.terrain, 1, seededRng(Math.floor(Math.random() * 1e9)));
+      randomTerrainFor(this.board, this.terrain, 1, seededRng(freshSeed()));
       this.boardView.setTerrain(this.terrain);
     }
     this.state = createGame(this.board, this.terrain, { ordersPerTurn: this.options.ordersPerTurn });
