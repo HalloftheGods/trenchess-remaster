@@ -264,6 +264,7 @@ const boot = (s: BattleScene): void => {
   game.scene.add("hello", HelloScene, false);
   game.scene.add("splash", SplashScene, true);
   liftBootScreen();
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("dev")) void import("./dev/devPanel").then((m) => m.mountDevPanel(game));
 };
 
 game = new Phaser.Game({
