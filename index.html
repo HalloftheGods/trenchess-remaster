@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trenchess Remastered</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="stage"></div>
+
+    <section id="title" class="screen">
+      <div class="title-card">
+        <h1 class="logo">TRENCHESS<span>Remastered</span></h1>
+        <p class="tagline">Chess, rebuilt as a turn-based war game. Shape the land, command your army, take the enemy Warlord.</p>
+        <form id="setup" class="setup">
+          <fieldset>
+            <legend>Opponent</legend>
+            <label><input type="radio" name="opponent" value="ai" checked /> Computer</label>
+            <label><input type="radio" name="opponent" value="hotseat" /> Hotseat (2 players)</label>
+          </fieldset>
+          <fieldset id="difficulty-set">
+            <legend>Commander</legend>
+            <label><input type="radio" name="difficulty" value="recruit" /> Recruit</label>
+            <label><input type="radio" name="difficulty" value="veteran" checked /> Veteran</label>
+            <label><input type="radio" name="difficulty" value="warlord" /> Warlord</label>
+          </fieldset>
+          <fieldset>
+            <legend>Orders per turn</legend>
+            <label><input type="radio" name="orders" value="2" checked /> Command (2)</label>
+            <label><input type="radio" name="orders" value="1" /> Classic (1)</label>
+          </fieldset>
+          <fieldset>
+            <legend>Battlefield</legend>
+            <label><input type="radio" name="battlefield" value="random" checked /> Random terrain</label>
+            <label><input type="radio" name="battlefield" value="open" /> Build my own</label>
+          </fieldset>
+          <fieldset>
+            <legend>Fog of war</legend>
+            <label><input type="checkbox" name="fog" /> Only see what your units see</label>
+          </fieldset>
+          <button type="submit" class="btn primary big">Deploy army</button>
+        </form>
+        <details class="howto">
+          <summary>How to play</summary>
+          <ul>
+            <li><b>Deploy:</b> place up to 16 terrain tiles in your half and arrange your army in your back four rows.</li>
+            <li><b>Orders:</b> in Command mode you give 2 orders a turn, each to a different unit. Combos are deadly: a discovered attack can take a king within one turn.</li>
+            <li><b>Terrain:</b> forests stop rooks and knights, swamps stop bishops and knights, mountains stop rooks and bishops. Deserts let anyone in but stop sliders, and units left idle there at the end of your turn perish.</li>
+            <li><b>New moves:</b> kings joust, queens leap like knights, rooks step diagonally, bishops jump 2 straight, knights jump 3 straight, pawns backflip.</li>
+            <li><b>Victory:</b> capture or checkmate the enemy Warlord (king).</li>
+            <li><b>Controls:</b> click a unit, then a highlighted tile. Right-click cancels. Scroll to zoom, right-drag to pan. Space ends your turn.</li>
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <section id="hud" class="hidden">
+      <header class="topbar">
+        <div class="plate p0"><img class="crest" alt="" /><div><b>Azure Legion</b><small class="count"></small></div><div class="trophies"></div></div>
+        <div class="turnplate"><div class="turn-line"></div><div class="pips"></div><div class="thinking hidden">Enemy commander is planning…</div></div>
+        <div class="plate p1"><div class="trophies"></div><div><b>Crimson Host</b><small class="count"></small></div><img class="crest" alt="" /></div>
+      </header>
+
+      <aside class="inspector">
+        <div class="unit-card hidden"><img class="portrait" alt="" /><div><h3 class="u-name"></h3><small class="u-role"></small><p class="u-moves"></p></div></div>
+        <div class="terrain-card"><span class="swatch"></span><div><h4 class="t-name">Plains</h4><p class="t-text"></p></div></div>
+      </aside>
+
+      <aside class="log"><h4>Battle log</h4><ol></ol></aside>
+
+      <div class="deploy hidden">
+        <h3 class="deploy-title">Deployment</h3>
+        <p class="deploy-hint"></p>
+        <div class="tools"></div>
+        <div class="row"><button class="btn" data-act="randomize">Randomize</button><button class="btn" data-act="clear">Clear</button></div>
+        <button class="btn primary" data-act="ready">Ready for battle</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" data-act="end-turn">End turn <kbd>Space</kbd></button>
+        <button class="btn icon" data-act="sound" title="Sound">🔊</button>
+        <button class="btn icon" data-act="menu" title="Menu">☰</button>
+      </div>
+    </section>
+
+    <div id="banner" class="hidden"><h2></h2><p></p></div>
+
+    <section id="over" class="screen hidden">
+      <div class="title-card small">
+        <h2 class="over-title"></h2>
+        <p class="over-text"></p>
+        <div class="row"><button class="btn primary" data-act="again">Play again</button><button class="btn" data-act="to-menu">Main menu</button></div>
+      </div>
+    </section>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
