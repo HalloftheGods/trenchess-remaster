@@ -1,0 +1,35 @@
+- ref: epic
+  title: "Presentation overhaul phase 2"
+  kind: epic
+  prio: 1
+  desc: "Chi setup (done), media player, world themes, chibi Beasts, 8x8 rendering, duel cutscene, DOM reskin"
+- ref: media
+  title: "In-engine media player for the music"
+  parent_ref: epic
+  prio: 1
+  brief_file: media-player.md
+- ref: worlds
+  title: "World terrain themes (Neon City, Frontier, Tundra, Jungle, Volcanic)"
+  parent_ref: epic
+  prio: 1
+  brief_file: worlds.md
+- ref: beasts
+  title: "Chibi vinyl-toy restyle of the Beasts chessmen"
+  parent_ref: epic
+  prio: 2
+  brief_file: beasts-chibi.md
+- ref: board
+  title: "Render the Classic 8x8 board"
+  parent_ref: epic
+  prio: 2
+  brief_file: boardsize.md
+- ref: duel
+  title: "Pixel-art duel cutscene on captures"
+  parent_ref: epic
+  prio: 2
+  brief_file: duel.md
+- ref: reskin
+  title: "Reskin the remaining HTML to the in-game look"
+  parent_ref: epic
+  prio: 3
+  brief_file: reskin.md
