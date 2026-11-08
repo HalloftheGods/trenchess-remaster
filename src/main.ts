@@ -8,6 +8,7 @@ import { Hud } from "./ui/Hud";
 import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
 import { getRotation, setRotation } from "./render/iso";
 import { sfx } from "./audio/sfx";
+import { terrainStrip } from "./render/art/terrainStrip";
 import type { Difficulty } from "./engine/ai";
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
@@ -176,7 +177,7 @@ const boot = (s: BattleScene): void => {
   scene = s;
   loadTheme();
   paintUnits(s);
-  hud = new Hud((type, owner) => s.textures.getBase64(unitKey(type, owner)));
+  hud = new Hud((type, owner) => s.textures.getBase64(unitKey(type, owner)), (t) => terrainStrip(s, t));
   match = new Match(s.board, s.units, hud);
   chessmen = new Chessmen($(".panel[data-panel=educate] .chessmen"), (type, owner) => s.textures.getBase64(unitKey(type, owner)));
   $<HTMLImageElement>(".brand-icon").src = logoUrl;

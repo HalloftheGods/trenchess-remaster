@@ -11,6 +11,7 @@ const FILES = "abcdefghijkl";
 const coord = ([r, c]: readonly [number, number]): string => `${FILES[c]}${12 - r}`;
 
 export type IconFor = (type: UnitType, owner: PlayerId) => string;
+export type TerrainIconFor = (t: Terrain) => string;
 
 const REASONS: Record<Outcome["reason"], string> = {
   "king-captured": "The enemy Equinox King has fallen in battle.",
@@ -32,7 +33,7 @@ export class Hud {
   private root = $("#hud");
   private bannerTimer = 0;
 
-  constructor(private icon: IconFor) {
+  constructor(private icon: IconFor, private terrainIcon: TerrainIconFor) {
     this.refreshTheme();
   }
 
@@ -128,7 +129,7 @@ export class Hud {
       $(".u-moves", card).innerHTML = `<i>"${lore.motto}"</i><br/><b>${lore.ability}:</b> ${lore.moves}`;
     }
     const t = TERRAIN_LORE[terrain];
-    $<HTMLElement>(".terrain-card .swatch", this.root).style.background = t.color;
+    $<HTMLImageElement>(".terrain-card .t-strip", this.root).src = this.terrainIcon(terrain);
     $(".t-name", this.root).textContent = terrain === "flat" ? t.name : `${t.name} · ${t.subtitle}`;
     $(".t-text", this.root).textContent = t.text;
   }

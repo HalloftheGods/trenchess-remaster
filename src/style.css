@@ -369,8 +369,47 @@ kbd {
 .unit-card,
 .terrain-card {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 10px 12px;
+}
+
+.terrain-card .t-strip {
+  flex: 1 1 100%;
+  width: 100%;
+  height: auto;
+  margin-top: 2px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+}
+
+.unit-card .u-preview {
+  flex: 1 1 100%;
+  margin-top: 2px;
+}
+
+.u-preview .mp-grid {
+  width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  justify-content: stretch;
+  gap: 2px;
+  padding: 8px;
+}
+
+.u-preview .mp-cell {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  font-size: 13px;
+}
+
+.u-preview .mp-cell img {
+  width: 130%;
+  height: 210%;
+  bottom: -3px;
 }
 
 .portrait {
@@ -1107,23 +1146,6 @@ kbd {
 .cm-legend .upgrade { background: #f59e0b; }
 .cm-legend .attack { background: #ef4444; }
 .cm-legend .blocked { background: rgba(239, 68, 68, 0.35); }
-
-.unit-card .mp-grid {
-  grid-template-columns: repeat(11, 9px);
-  padding: 3px;
-  margin-top: 6px;
-}
-
-.unit-card .mp-cell {
-  width: 9px;
-  height: 9px;
-  font-size: 0;
-}
-
-.unit-card .mp-cell img {
-  width: 14px;
-  height: 22px;
-}
 
 @media (max-width: 760px) {
   .cm-tabs {
