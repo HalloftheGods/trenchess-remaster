@@ -295,7 +295,7 @@ const drawGlyph = (g: CanvasRenderingContext2D, type: UnitType, f: Faction): voi
   g.shadowBlur = 0;
 };
 
-const STYLES: Record<PieceStyle, (type: UnitType, f: Faction) => (g: CanvasRenderingContext2D) => void> = {
+export const STYLES: Record<PieceStyle, (type: UnitType, f: Faction) => (g: CanvasRenderingContext2D) => void> = {
   classic: drawUnit,
   legion: (type, f) => (g) => LEGION[type](g, f),
   glyph: (type, f) => (g) => drawGlyph(g, type, f),

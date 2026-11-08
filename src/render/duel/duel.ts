@@ -1,3 +1,4 @@
+import type { PieceStyle } from "../art/unitArt";
 import type { WorldId } from "../art/worlds/registry";
 import type { PlayerId, Terrain, Unit } from "../../engine/types";
 
@@ -15,6 +16,8 @@ export interface DuelRequest {
   special?: boolean;
   /** The match's world: picks that world's battlefield set. Default: the active world. */
   world?: WorldId;
+  /** The chessmen set the fighters are drawn in. Default: the set chosen for the match. */
+  style?: PieceStyle;
 }
 
 export interface DuelHost {

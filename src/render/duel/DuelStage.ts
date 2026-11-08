@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import type { Unit } from "../../engine/types";
 import { COLOR } from "../ui/fonts";
-import { FACTIONS } from "../art/unitArt";
+import { FACTIONS, theme } from "../art/unitArt";
 import type { DuelRequest } from "./duel";
 import { world as activeWorld } from "../art/worlds/registry";
 import { DuelBackdrop } from "./duelBackdrop";
@@ -67,8 +67,9 @@ export class DuelStage implements Clocked {
     const gap = (u: Unit): number => Math.round(Math.max(lw * 0.17, 46) + (u.type === "knight" || u.type === "queen" ? 14 : 0));
     this.aHome = Math.round(lw / 2 - this.dir * gap(req.attacker));
     this.dHome = Math.round(lw / 2 + this.dir * gap(req.defender));
-    this.d = new DuelSprite(scene, this.actors, req.defender, this.dHome, (-this.dir) as 1 | -1);
-    this.a = new DuelSprite(scene, this.actors, req.attacker, this.aHome, this.dir);
+    const style = req.style ?? theme.style;
+    this.d = new DuelSprite(scene, this.actors, req.defender, this.dHome, (-this.dir) as 1 | -1, style);
+    this.a = new DuelSprite(scene, this.actors, req.attacker, this.aHome, this.dir, style);
     this.fx = new DuelFx(scene, this.actors);
     this.aSide = this.dir > 0 ? 0 : 1;
     this.dSide = this.dir > 0 ? 1 : 0;

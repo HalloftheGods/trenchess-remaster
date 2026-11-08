@@ -1,14 +1,15 @@
 import Phaser from "phaser";
 import type { Terrain, Unit } from "../../../engine/types";
 import { addPainted } from "../../art/canvas";
-import { FACTIONS, theme } from "../../art/unitArt";
+import { FACTIONS, theme, type PieceStyle } from "../../art/unitArt";
 import type { WorldId } from "../../art/worlds/registry";
 import { fieldFor } from "./fields/worlds";
 import { FONT, FONT_H, FONT_W } from "./font";
 import { FX, FX_PALETTE, type FxId } from "./fx";
 import { PixelPainter, SCREEN_H, TILE_W } from "./painter";
 import { armyPalette, type Palette } from "./palette";
-import { FRAME_IDS, drawGrid, type FrameId, type Grid } from "./sheet";
+import { FRAME_IDS, drawGrid, type FrameId, type Grid, type SpriteSheet } from "./sheet";
+import { styledSheet } from "./styled";
 import { SHEETS } from "./sheets";
 
 const NEAREST = Phaser.Textures.FilterMode.NEAREST;
@@ -26,26 +27,34 @@ const canvasTexture = (scene: Phaser.Scene, key: string, w: number, h: number, d
   return key;
 };
 
-export const frameKey = (unit: Unit, frame: FrameId): string => `px-${theme.palette}-${unit.owner}-${unit.type}-${frame}`;
+export const frameKey = (unit: Unit, frame: FrameId, style: PieceStyle): string => `px-${style}-${theme.palette}-${unit.owner}-${unit.type}-${frame}`;
 
-/** Paints every frame of `unit`'s sheet in its army's colours (idempotent per palette). */
-export const paintSheet = (scene: Phaser.Scene, unit: Unit): void => {
-  const sheet = SHEETS[unit.type];
-  const pal = armyPalette(FACTIONS[unit.owner], sheet.palette);
-  for (const id of FRAME_IDS) canvasTexture(scene, frameKey(unit, id), sheet.w, sheet.h, (g) => drawGrid(g, sheet.frames[id], pal));
+/** The duel sheet and colours of `unit` in chessmen set `style`: hand-pixeled heroes for Figurines, the board piece pixelated otherwise. */
+export const sheetOf = (unit: Unit, style: PieceStyle): { sheet: SpriteSheet; pal: Palette } => {
+  if (style === "legion") {
+    const sheet = SHEETS[unit.type];
+    return { sheet, pal: armyPalette(FACTIONS[unit.owner], sheet.palette) };
+  }
+  const sheet = styledSheet(style, theme.palette, unit);
+  return { sheet, pal: sheet.palette ?? {} };
+};
+
+/** Paints every frame of `unit`'s sheet in its army's colours (idempotent per set and palette). */
+export const paintSheet = (scene: Phaser.Scene, unit: Unit, style: PieceStyle): void => {
+  const { sheet, pal } = sheetOf(unit, style);
+  for (const id of FRAME_IDS) canvasTexture(scene, frameKey(unit, id, style), sheet.w, sheet.h, (g) => drawGrid(g, sheet.frames[id], pal));
 };
 
 /** The frames of a pixel dissolve: the sprite eaten away in a dither pattern, `n` steps. */
-export const paintDissolve = (scene: Phaser.Scene, unit: Unit, frame: FrameId, n: number): string[] => {
-  const sheet = SHEETS[unit.type];
-  const pal = armyPalette(FACTIONS[unit.owner], sheet.palette);
+export const paintDissolve = (scene: Phaser.Scene, unit: Unit, frame: FrameId, n: number, style: PieceStyle): string[] => {
+  const { sheet, pal } = sheetOf(unit, style);
   const white: Palette = Object.fromEntries(Object.entries(pal).map(([k, v]) => [k, k === "z" ? v : "#ffffff"]));
   const grid = sheet.frames[frame];
   const order = (x: number, y: number): number => (((x * 7 + y * 13 + ((x * y) % 5) * 3) % 16) + 0.5) / 16;
   return Array.from({ length: n }, (_, i) => {
     const cut = (i + 1) / (n + 1);
     const eaten: Grid = grid.map((row, y) => row.replace(/./g, (ch, x: number) => (order(x, y) < cut ? "." : ch)));
-    return canvasTexture(scene, `${frameKey(unit, frame)}-dis${i}`, sheet.w, sheet.h, (g) => drawGrid(g, eaten, i % 2 ? white : pal));
+    return canvasTexture(scene, `${frameKey(unit, frame, style)}-dis${i}`, sheet.w, sheet.h, (g) => drawGrid(g, eaten, i % 2 ? white : pal));
   });
 };
 

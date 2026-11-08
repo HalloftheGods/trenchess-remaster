@@ -2,8 +2,8 @@ import Phaser from "phaser";
 import type { Unit } from "../../engine/types";
 import { FLOOR_Y } from "./pixel/painter";
 import type { FrameId, SpriteSheet } from "./pixel/sheet";
-import { SHEETS } from "./pixel/sheets";
-import { frameKey, paintDissolve, paintSheet } from "./pixel/textures";
+import type { PieceStyle } from "../art/unitArt";
+import { frameKey, paintDissolve, paintSheet, sheetOf } from "./pixel/textures";
 
 interface Anim {
   frames: FrameId[];
@@ -35,20 +35,20 @@ export class DuelSprite {
   /** Set once the sprite is dissolving; poses no longer apply. */
   gone = false;
 
-  constructor(private scene: Phaser.Scene, private layer: Phaser.GameObjects.Container, readonly unit: Unit, x: number, face: 1 | -1) {
-    this.sheet = SHEETS[unit.type];
-    paintSheet(scene, unit);
+  constructor(private scene: Phaser.Scene, private layer: Phaser.GameObjects.Container, readonly unit: Unit, x: number, face: 1 | -1, readonly style: PieceStyle) {
+    this.sheet = sheetOf(unit, style).sheet;
+    paintSheet(scene, unit, style);
     this.x = x;
     this.face = face;
-    this.shadow = scene.add.image(0, FLOOR_Y + 1, "px-shadow").setScale(this.sheet.w > 70 ? 2 : 1, 1);
-    this.img = scene.add.image(0, 0, frameKey(unit, "idle0"));
+    this.shadow = scene.add.image(0, FLOOR_Y + 1, "px-shadow").setScale(style === "legion" && this.sheet.w > 70 ? 2 : 1, 1);
+    this.img = scene.add.image(0, 0, frameKey(unit, "idle0", style));
     layer.add([this.shadow, this.img]);
     this.t = Math.random() * 2;
     this.sync();
   }
 
   get mounted(): boolean {
-    return this.sheet.w > 70;
+    return this.style === "legion" && this.sheet.w > 70;
   }
 
   /** Shows one frame and stops any animation. */
@@ -75,7 +75,7 @@ export class DuelSprite {
 
   private show(frame: FrameId): void {
     this.frame = frame;
-    if (!this.gone) this.img.setTexture(frameKey(this.unit, frame));
+    if (!this.gone) this.img.setTexture(frameKey(this.unit, frame, this.style));
   }
 
   tick(dt: number): void {
@@ -135,7 +135,7 @@ export class DuelSprite {
 
   /** Breaks the sprite down in a dither pattern, flickering white, over `ms`. */
   dissolve(ms: number): void {
-    const keys = paintDissolve(this.scene, this.unit, this.frame, 8);
+    const keys = paintDissolve(this.scene, this.unit, this.frame, 8, this.style);
     this.anim = null;
     this.gone = true;
     this.img.clearTint();

@@ -2,7 +2,7 @@ import { WORLD_LABELS, WORLD_ORDER, world as activeWorld } from "../render/art/w
 import type Phaser from "phaser";
 import type { PlayerId, Terrain, UnitType } from "../engine/types";
 import { TERRAIN_LORE, UNIT_LORE } from "../game/lore";
-import { PALETTES, STYLE_ORDER, theme, type PaletteId } from "../render/art/unitArt";
+import { PALETTES, STYLE_LABELS, STYLE_ORDER, theme, type PaletteId } from "../render/art/unitArt";
 import { duels, type DuelMode } from "../render/duel/duel";
 
 const TYPES: UnitType[] = ["king", "queen", "rook", "bishop", "knight", "pawn"];
@@ -74,6 +74,7 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   const [tL, terrain] = select("Terrain", TERRAINS, (t) => `${TERRAIN_LORE[t].subtitle}`, "flat");
   const [vL, move] = select("Attack", ["ability", "classic"], (m) => (m === "ability" ? "Ability (upgraded move)" : "Classic move"), "ability");
   const [wL, worldPick] = select("World", WORLD_ORDER, (w) => WORLD_LABELS[w], activeWorld.id);
+  const [cL, setPick] = select("Chessmen", STYLE_ORDER, (st) => STYLE_LABELS[st], theme.style);
   const [mL, mode] = select("Speed", MODES, (m) => (m === "full" ? "Full" : "Fast"), "full");
   const palettes = Object.keys(PALETTES) as PaletteId[];
   const [pL, palette] = select("Colours", palettes, (p) => `${PALETTES[p][0].name} · ${PALETTES[p][1].name}`, theme.palette);
@@ -84,7 +85,7 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   const play = async (a: UnitType, d: UnitType): Promise<void> => {
     if (palette() !== theme.palette) game.events.emit("ui:theme", { style: theme.style ?? STYLE_ORDER[0], palette: palette() });
     const owner = Number(side()) as PlayerId;
-    await duels.play({ attacker: { id: id++, type: a, owner }, defender: { id: id++, type: d, owner: (1 - owner) as PlayerId }, terrain: terrain(), attackerOwner: owner, mode: mode(), special: move() === "ability", world: worldPick() });
+    await duels.play({ attacker: { id: id++, type: a, owner }, defender: { id: id++, type: d, owner: (1 - owner) as PlayerId }, terrain: terrain(), attackerOwner: owner, mode: mode(), special: move() === "ability", world: worldPick(), style: setPick() });
   };
   const run = async (fn: () => Promise<void>): Promise<void> => {
     if (isBusy) return;
@@ -135,6 +136,6 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   const note = document.createElement("div");
   note.className = "note";
   note.textContent = "Any key or click on the game skips a duel. Click the title bar to fold this panel.";
-  body.append(h1, aL, dL, vL, sL, wL, tL, mL, pL, duelRow, h2, sceneRow, note);
+  body.append(h1, aL, dL, vL, cL, sL, wL, tL, mL, pL, duelRow, h2, sceneRow, note);
   document.body.append(root);
 };
