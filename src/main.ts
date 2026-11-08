@@ -6,6 +6,7 @@ import { SplashScene } from "./render/scenes/SplashScene";
 import { TitleScene } from "./render/scenes/TitleScene";
 import { SetupScene } from "./render/scenes/SetupScene";
 import { OverlayScene } from "./render/scenes/OverlayScene";
+import { DuelScene } from "./render/duel/DuelScene";
 import { Match, type MatchOptions } from "./game/Match";
 import type { OnlineStart } from "./net/onlineMatch";
 import { Hud } from "./ui/Hud";
@@ -235,6 +236,7 @@ const boot = (s: BattleScene): void => {
   bindMusic();
   setTheme(theme.style, theme.palette);
   game.scene.add("overlay", OverlayScene, true);
+  game.scene.add("duel", DuelScene, true);
   game.scene.add("title", TitleScene, false);
   game.scene.add("setup", SetupScene, false);
   game.scene.add("splash", SplashScene, true);

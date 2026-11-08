@@ -15,6 +15,8 @@ import { FACTIONS } from "../render/art/unitArt";
 import { buildField, freshSeed, plainsField, type Field, type GameMode } from "./fields";
 import type { DuelChannel, DuelPacket } from "../net/duel";
 import { fitsBoard, matchingOrder, takeHalf } from "./online";
+import { captureDuels } from "../render/duel/captureDuels";
+import type { DuelMode } from "../render/duel/duel";
 
 export type { GameMode } from "./fields";
 
@@ -28,6 +30,8 @@ export interface MatchOptions {
   board: BoardKind;
   /** Chi battlefield (`Preset.id`); a random preset is drawn when missing. */
   preset?: string;
+  /** The pixel-art duel played on a capture; "full" when missing. */
+  duel?: DuelMode;
 }
 
 export type DeployTool = "units" | Terrain;
@@ -422,6 +426,7 @@ export class Match {
     const s = this.state!;
     if (e.kind === "order" && e.order) {
       this.hud.log(e, before);
+      await captureDuels(e.order, before, s.terrain, this.options.duel ?? "full");
       await this.units.animateOrder(e.order, before);
     }
     if (e.kind === "promote" && e.at) await this.units.promote(e.at, s.board);
