@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+// First, so the browser's early install prompt (beforeinstallprompt) is held for the title's Install Game cartridge.
+import { startServiceWorker } from "./pwa";
 import "./style.css";
 import { Chessmen } from "./ui/Chessmen";
 import { BattleScene } from "./render/scenes/BattleScene";
@@ -277,6 +279,7 @@ const boot = (s: BattleScene): void => {
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("dev")) void import("./dev/devPanel").then((m) => m.mountDevPanel(game));
 };
 
+startServiceWorker();
 bootStep(0.35, "Starting the engine");
 game = new Phaser.Game({
   type: Phaser.AUTO,

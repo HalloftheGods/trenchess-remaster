@@ -9,10 +9,14 @@ import { Lockup, LOCKUP_BOTTOM, LOCKUP_TOP, LOGO_KEY } from "./title/Lockup";
 import { Footer } from "./title/Footer";
 import { Sequence } from "./title/sequence";
 import { MENU_ITEMS, previewOf } from "./title/menuItems";
+import { CARTRIDGE_KEY, CARTRIDGE_URL, InstallCartridge } from "./title/InstallCartridge";
+import { setTitleShowing } from "../../pwa";
 
 const TOP = 90;
 const MENU_GAP = 26;
 const MENU_AT = 2950;
+/** Space between the menu's right edge and the Install Game cartridge, in root units. */
+const CARTRIDGE_GAP = 44;
 
 interface TitleHook {
   open: (id: string) => void;
@@ -40,6 +44,9 @@ export class TitleScene extends Phaser.Scene {
   private footer!: Footer;
   private lockup!: Lockup;
   private menu: MenuList | null = null;
+  private cartridge: InstallCartridge | null = null;
+  /** Width of the title's content in root units: the lockup, or the menu plus its cartridge if wider. */
+  private span = 760;
   private sparks: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private seq!: Sequence;
 
@@ -50,6 +57,7 @@ export class TitleScene extends Phaser.Scene {
   preload(): void {
     if (!this.textures.exists(LOGO_KEY)) this.load.image(LOGO_KEY, logoUrl);
     if (!this.textures.exists(OMEGA_KEY)) this.load.image(OMEGA_KEY, omegaUrl);
+    if (!this.textures.exists(CARTRIDGE_KEY)) this.load.image(CARTRIDGE_KEY, CARTRIDGE_URL);
   }
 
   create(): void {
@@ -67,12 +75,24 @@ export class TitleScene extends Phaser.Scene {
     this.layout();
     this.scale.on("resize", this.layout, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.teardown());
+    // A new version of the game may take over only while the title is up, never mid-match.
+    setTitleShowing(true);
+    this.events.on(Phaser.Scenes.Events.WAKE, this.onWake, this);
+    this.events.on(Phaser.Scenes.Events.SLEEP, this.onSleep, this);
     this.input.keyboard?.on("keydown", this.skip, this);
     this.input.on("pointerdown", this.skip, this);
     void fontsReady().then(() => {
       if (!this.sys.isActive()) return;
       this.seq.play(() => this.ready());
     });
+  }
+
+  private onWake(): void {
+    setTitleShowing(true);
+  }
+
+  private onSleep(): void {
+    setTitleShowing(false);
   }
 
   private layout(): void {
@@ -82,7 +102,7 @@ export class TitleScene extends Phaser.Scene {
     this.vignette.setDisplaySize(w, h);
     const menuH = MENU_ITEMS.length * MENU_ROW;
     const needed = TOP + (LOCKUP_BOTTOM - LOCKUP_TOP) + MENU_GAP + menuH + 70;
-    const k = Phaser.Math.Clamp(Math.min(h / needed, w / 760), 0.55, 1);
+    const k = Phaser.Math.Clamp(Math.min(h / needed, w / this.span), 0.55, 1);
     const top = Math.max(TOP * k, (h - needed * k) / 2 + TOP * k);
     this.root.setScale(k).setPosition(w / 2, top - LOCKUP_TOP * k);
     this.pillar.setPosition(w / 2, 0).setDisplaySize(Math.min(w, 760 * k + 160), h);
@@ -111,6 +131,7 @@ export class TitleScene extends Phaser.Scene {
     if (!this.menu) this.menu = this.buildMenu();
     this.menu.setAlpha(1);
     this.footer.setAlpha(1);
+    this.cartridge?.reveal(instant);
     if (instant) return;
     slideIn(this, this.menu.rowObjects.flat(), "left", 0, 50);
     this.footer.setAlpha(0);
@@ -128,6 +149,13 @@ export class TitleScene extends Phaser.Scene {
     );
     menu.setX(-menu.width / 2);
     this.root.add(menu);
+    // The Install Game cartridge sits beside the menu, as in the studio's other games; it shows only when installable.
+    const menuMid = LOCKUP_BOTTOM + MENU_GAP + (MENU_ITEMS.length * MENU_ROW) / 2;
+    this.cartridge = new InstallCartridge(this, 0, menuMid);
+    this.cartridge.setX(menu.width / 2 + CARTRIDGE_GAP + this.cartridge.displayW / 2);
+    this.root.add(this.cartridge);
+    this.span = Math.max(760, 2 * (this.cartridge.x + this.cartridge.displayW / 2) + 40);
+    this.layout();
     return menu;
   }
 
@@ -171,6 +199,11 @@ export class TitleScene extends Phaser.Scene {
     this.sparks?.destroy();
     this.sparks = null;
     this.menu = null;
+    this.cartridge = null;
+    this.span = 760;
+    this.events.off(Phaser.Scenes.Events.WAKE, this.onWake, this);
+    this.events.off(Phaser.Scenes.Events.SLEEP, this.onSleep, this);
+    setTitleShowing(false);
     if (window.__tcTitle) delete window.__tcTitle;
   }
 }
