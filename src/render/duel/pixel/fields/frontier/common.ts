@@ -157,9 +157,11 @@ export const paintMesas = (p: PixelPainter, mesas: Mesa[], pal: MesaPal, base: n
       let c = lit ? pal.lit : pal.shade;
       if (pal.talus && dy > m.cap + 1) c = lit ? pal.lit : pal.talus;
       // strata: a darker band every few rows of the cliff
-      if (dy > 1 && dy <= m.cap && dy % 4 === 2) c = pal.band;
-      // vertical erosion gullies in the cliff
-      if (dy > 2 && dy <= m.cap && ((x * 7 + owner * 5) % 11 === 0)) c = pal.band;
+      if (dy > 1 && dy <= m.cap + 2 && Math.floor(dy * 0.62) % 3 === 1 && dy % 3 !== 0) c = pal.band;
+      // vertical erosion gullies of uneven length hanging from the strata
+      const g = (x * 7 + owner * 5) % 13;
+      const gLen = 3 + ((x * 11 + owner) % 7) * 2;
+      if (g === 0 && dy > 3 && dy < Math.min(m.cap, 3 + gLen)) c = pal.band;
       // silhouette: hot rim across the flat top and down the sunlit side, dark on the shade side
       if (y === top) c = Math.abs(dx) <= m.w || lit ? pal.rim : pal.band;
       p.px(x, y, c);
