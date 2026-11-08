@@ -9,17 +9,16 @@ export const VARIANTS = 3;
 
 interface Palette {
   top: string;
-  alt: string;
   side: string;
   speck: string;
 }
 
 const PALETTES: Record<Terrain, Palette> = {
-  flat: { top: "#86b34e", alt: "#71a042", side: "#7a5a3a", speck: "#a5cc68" },
-  forest: { top: "#4f7f36", alt: "#45742f", side: "#6b4e32", speck: "#6e9c45" },
-  swamp: { top: "#3f6e66", alt: "#3a665e", side: "#4d4a35", speck: "#5f8f7c" },
-  mountain: { top: "#9a8f7e", alt: "#90857a", side: "#6e655a", speck: "#b7ad9b" },
-  desert: { top: "#e6c47c", alt: "#ddb96e", side: "#b98a4c", speck: "#f3dca2" },
+  flat: { top: "#8cbc52", side: "#7a5a3a", speck: "#a5cc68" },
+  forest: { top: "#4f7f36", side: "#6b4e32", speck: "#6e9c45" },
+  swamp: { top: "#3f6e66", side: "#4d4a35", speck: "#5f8f7c" },
+  mountain: { top: "#9a8f7e", side: "#6e655a", speck: "#b7ad9b" },
+  desert: { top: "#e6c47c", side: "#b98a4c", speck: "#f3dca2" },
 };
 
 const CX = TILE_W / 2;
@@ -135,9 +134,9 @@ const drawTile = (terrain: Terrain, light: boolean, seed: number) => (g: CanvasR
   drawSides(g, top, p);
   diamondPath(g, CX, top, TILE_W, TILE_H);
   const grad = g.createLinearGradient(CX - TILE_W / 2, top, CX + TILE_W / 2, top);
-  const base = light ? p.top : p.alt;
-  grad.addColorStop(0, shade(base, 0.05));
-  grad.addColorStop(1, shade(base, -0.05));
+  const base = shade(p.top, light ? 0.06 : -0.13);
+  grad.addColorStop(0, base);
+  grad.addColorStop(1, base);
   g.fillStyle = grad;
   g.fill();
   speckle(g, top, p.speck, 40, r);

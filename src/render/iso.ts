@@ -18,18 +18,40 @@ export interface ScreenPoint {
   y: number;
 }
 
-export const toScreen = (r: number, c: number): ScreenPoint => ({
-  x: (c - r) * (TILE_W / 2),
-  y: (c + r) * (TILE_H / 2),
-});
+const LAST = 11;
+
+let rotation = 0;
+
+export const getRotation = (): number => rotation;
+
+export const setRotation = (quarterTurns: number): void => {
+  rotation = ((quarterTurns % 4) + 4) % 4;
+};
+
+const rotate = (r: number, c: number, turns: number): [number, number] => {
+  let vr = r;
+  let vc = c;
+  for (let i = 0; i < turns; i++) [vr, vc] = [vc, LAST - vr];
+  return [vr, vc];
+};
+
+export const toView = (r: number, c: number): [number, number] => rotate(r, c, rotation);
+
+export const toScreen = (r: number, c: number): ScreenPoint => {
+  const [vr, vc] = toView(r, c);
+  return { x: (vc - vr) * (TILE_W / 2), y: (vc + vr) * (TILE_H / 2) };
+};
 
 export const toCell = (x: number, y: number): [number, number] => {
   const a = x / (TILE_W / 2);
   const b = y / (TILE_H / 2);
-  return [Math.round((b - a) / 2), Math.round((a + b) / 2)];
+  return rotate(Math.round((b - a) / 2), Math.round((a + b) / 2), (4 - rotation) % 4);
 };
 
-export const depthOf = (r: number, c: number, layer: number): number => (r + c) * 10 + layer;
+export const depthOf = (r: number, c: number, layer: number): number => {
+  const [vr, vc] = toView(r, c);
+  return (vr + vc) * 10 + layer;
+};
 
 export const LAYER = {
   tile: 0,

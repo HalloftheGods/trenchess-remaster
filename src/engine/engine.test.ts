@@ -95,6 +95,16 @@ describe("upgraded moves", () => {
     expect(s.board[3][5]?.type).toBe("king");
   });
 
+  it("stops the king jousting through a square the enemy guards", () => {
+    const { board, terrain } = blank();
+    put(board, [5, 5], "king", 0);
+    put(board, [4, 5], "pawn", 1);
+    put(board, [4, 9], "rook", 1);
+    put(board, [0, 0], "king", 1);
+    const s = game(board, terrain);
+    expect(legalOrders(s).some((o) => o.style === "joust" && o.to[0] === 3 && o.to[1] === 5)).toBe(false);
+  });
+
   it("lets pawns backflip two squares", () => {
     const { board, terrain } = blank();
     put(board, [6, 6], "pawn", 0);

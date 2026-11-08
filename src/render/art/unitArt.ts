@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { PlayerId, UnitType } from "../../engine/types";
 import { paint } from "./canvas";
+import { LEGION } from "./legionArt";
 
 export const UNIT_W = 64;
 export const UNIT_H = 100;
@@ -15,9 +16,33 @@ export interface Faction {
   css: string;
 }
 
-export const FACTIONS: Record<PlayerId, Faction> = {
-  0: { name: "Azure Legion", base: "#3b7dd8", light: "#a6d4ff", dark: "#173a72", trim: "#f2c94c", css: "#5aa2ff" },
-  1: { name: "Crimson Host", base: "#cf3b3b", light: "#ffb0a0", dark: "#5e1414", trim: "#f2c94c", css: "#ff5a5a" },
+export type PieceStyle = "legion" | "classic" | "crystal" | "glyph";
+export type PaletteId = "royal" | "ivory" | "verdant";
+
+export const PALETTES: Record<PaletteId, Record<PlayerId, Faction>> = {
+  royal: {
+    0: { name: "Blue", base: "#3b7dd8", light: "#a6d4ff", dark: "#173a72", trim: "#f2c94c", css: "#5aa2ff" },
+    1: { name: "Red", base: "#cf3b3b", light: "#ffb0a0", dark: "#5e1414", trim: "#f2c94c", css: "#ff5a5a" },
+  },
+  ivory: {
+    0: { name: "White", base: "#e6dcc3", light: "#ffffff", dark: "#8c7f62", trim: "#c9a24a", css: "#f3e7c6" },
+    1: { name: "Black", base: "#3d3b47", light: "#8e8ba3", dark: "#121118", trim: "#c9a24a", css: "#b3aee0" },
+  },
+  verdant: {
+    0: { name: "Green", base: "#3aa65a", light: "#b6f5b8", dark: "#164a26", trim: "#f2e7c4", css: "#5fd47e" },
+    1: { name: "Yellow", base: "#e6b820", light: "#fff0a0", dark: "#6a5208", trim: "#f2e7c4", css: "#ffd23d" },
+  },
+};
+
+export const theme: { style: PieceStyle; palette: PaletteId } = { style: "legion", palette: "royal" };
+
+export const FACTIONS: Record<PlayerId, Faction> = { ...PALETTES.royal };
+
+export const applyTheme = (style: PieceStyle, palette: PaletteId): void => {
+  theme.style = style;
+  theme.palette = palette;
+  FACTIONS[0] = PALETTES[palette][0];
+  FACTIONS[1] = PALETTES[palette][1];
 };
 
 type Profile = [number, number][];
@@ -202,12 +227,71 @@ const drawUnit = (type: UnitType, f: Faction) => (g: CanvasRenderingContext2D) =
   g.globalAlpha = 1;
 };
 
-export const unitKey = (type: UnitType, owner: PlayerId): string => `unit-${type}-${owner}`;
+const glassify = (g: CanvasRenderingContext2D, f: Faction): void => {
+  g.globalCompositeOperation = "source-atop";
+  const sheen = g.createLinearGradient(0, 0, UNIT_W, UNIT_H);
+  sheen.addColorStop(0, "rgba(255,255,255,0.75)");
+  sheen.addColorStop(0.45, f.light);
+  sheen.addColorStop(0.55, "rgba(255,255,255,0.15)");
+  sheen.addColorStop(1, f.base);
+  g.globalAlpha = 0.6;
+  g.fillStyle = sheen;
+  g.fillRect(0, 0, UNIT_W, UNIT_H);
+  g.globalAlpha = 0.9;
+  g.fillStyle = "#ffffff";
+  g.fillRect(X - 9, 24, 2, 56);
+  g.fillRect(X + 5, 40, 1, 30);
+  g.globalCompositeOperation = "destination-in";
+  g.globalAlpha = 0.82;
+  g.fillRect(0, 0, UNIT_W, UNIT_H);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = "source-over";
+};
+
+const GLYPHS: Record<UnitType, string> = { king: "♚", queen: "♛", rook: "♜", bishop: "♝", knight: "♞", pawn: "♟" };
+
+const drawGlyph = (g: CanvasRenderingContext2D, type: UnitType, f: Faction): void => {
+  const disc = (y: number, color: string | CanvasGradient) => {
+    g.beginPath();
+    g.ellipse(X, y, 22, 8, 0, 0, Math.PI * 2);
+    g.fillStyle = color;
+    g.fill();
+  };
+  disc(90, f.dark);
+  disc(86, bodyGradient(g, f, 22));
+  g.beginPath();
+  g.roundRect(X - 22, 20, 44, 62, 10);
+  g.fillStyle = "rgba(10,10,14,0.82)";
+  g.fill();
+  g.lineWidth = 3;
+  g.strokeStyle = f.base;
+  g.stroke();
+  g.font = "bold 40px 'DejaVu Sans', 'Segoe UI Symbol', 'Noto Sans Symbols2', serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.shadowColor = f.base;
+  g.shadowBlur = 10;
+  g.fillStyle = f.light;
+  g.fillText(GLYPHS[type], X, 54);
+  g.shadowBlur = 0;
+};
+
+const STYLES: Record<PieceStyle, (type: UnitType, f: Faction) => (g: CanvasRenderingContext2D) => void> = {
+  classic: drawUnit,
+  legion: (type, f) => (g) => LEGION[type](g, f),
+  glyph: (type, f) => (g) => drawGlyph(g, type, f),
+  crystal: (type, f) => (g) => {
+    drawUnit(type, f)(g);
+    glassify(g, f);
+  },
+};
+
+export const unitKey = (type: UnitType, owner: PlayerId): string => `unit-${theme.style}-${theme.palette}-${type}-${owner}`;
 
 export const UNIT_TYPES: UnitType[] = ["king", "queen", "rook", "bishop", "knight", "pawn"];
 
 export const paintUnits = (scene: Phaser.Scene): void => {
   for (const owner of [0, 1] as PlayerId[]) {
-    for (const type of UNIT_TYPES) paint(scene, unitKey(type, owner), UNIT_W, UNIT_H, drawUnit(type, FACTIONS[owner]));
+    for (const type of UNIT_TYPES) paint(scene, unitKey(type, owner), UNIT_W, UNIT_H, STYLES[theme.style](type, FACTIONS[owner]));
   }
 };

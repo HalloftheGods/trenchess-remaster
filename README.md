@@ -2,13 +2,13 @@
 
 A ground-up remaster of Trenchess: chess rebuilt as a turn-based war game on an
 isometric diorama battlefield. Shape the terrain, deploy your army, then issue
-orders each turn until one Warlord falls.
+orders each turn until one King falls.
 
 ## Run it
 
 ```bash
-npm install
-npm run dev      # http://localhost:5173
+pnpm install     # or npm install
+pnpm dev         # http://localhost:5173
 npm test         # rules engine tests
 npm run build    # static build in dist/
 ```
@@ -23,9 +23,15 @@ npm run build    # static build in dist/
   knights; mountains block rooks and bishops. Deserts admit everyone but stop
   sliders, and units left idle in a desert at the end of your turn perish.
   Pawns cross any terrain.
-- **Upgraded moves:** kings joust (leap 2 straight, slaying what they jump),
-  queens add a knight leap, rooks add a diagonal step, bishops add a 2-square
-  straight jump, knights add a 3-square straight jump, pawns backflip 2 back.
+- **The Chessmen grow stronger:** Equinox King (Somersault Assault: 2 straight,
+  capturing what it passes, never through a guarded square), Sacred Queen
+  (8 Legged Gallop: knight leaps), Twilight Fortress (Four-Corners Fortnight:
+  1 diagonal), Light Seer (Leap of Faith: 2 straight), Shadow Knight
+  (Triple-Bar Jump: 3 straight), Nimbus Jumper (Double-back Flip: 2 back).
+- **Modes:** Ω Omega (build everything), χ Chi (terrain generated, you arrange
+  pieces), π Pi (classic formation, random terrain), α Alpha (all random).
+- **View:** Q/E rotate the board, T cycles piece styles (Figurines, Chessmen,
+  Crystal, Bold glyphs), plus three color sets.
 - **Victory:** capture or checkmate the enemy king.
 - **Fog of war (optional):** you only see tiles near your units, and units in
   forests are hidden unless you stand adjacent.

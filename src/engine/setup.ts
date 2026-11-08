@@ -114,3 +114,22 @@ export const swapUnits = (board: Cell[][], from: Pos, to: Pos): void => {
   board[from[0]][from[1]] = board[to[0]][to[1]];
   board[to[0]][to[1]] = a;
 };
+
+export const randomFormation = (board: Cell[][], terrain: Terrain[][], player: PlayerId, rng: Rng): void => {
+  const units: NonNullable<Cell>[] = [];
+  board.forEach((row, r) =>
+    row.forEach((u, c) => {
+      if (u?.owner !== player) return;
+      units.push(u);
+      board[r][c] = null;
+    }),
+  );
+  const [lo, hi] = deployRows(player);
+  const cells: Pos[] = [];
+  for (let r = lo; r <= hi; r++) for (let c = 0; c < BOARD_SIZE; c++) cells.push([r, c]);
+  for (const u of units) {
+    const open = cells.filter(([r, c]) => !board[r][c] && terrain[r][c] !== "desert" && canEnter(u.type, terrain[r][c]));
+    const [r, c] = open[Math.floor(rng() * open.length)];
+    board[r][c] = u;
+  }
+};

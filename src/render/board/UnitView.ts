@@ -226,6 +226,22 @@ export class UnitView {
     this.scene.tweens.add({ targets: this.ghostImg, alpha: 0.2, duration: 500, yoyo: true, repeat: -1 });
   }
 
+  relayout(board: Cell[][], duration: number): void {
+    board.forEach((row, r) =>
+      row.forEach((u, c) => {
+        const t = u && this.tokens.get(u.id);
+        if (!t) return;
+        const { x, y } = this.board.center(r, c);
+        t.root.setDepth(depthOf(r, c, LAYER.unit));
+        this.scene.tweens.add({ targets: t.root, x, y, duration, ease: "Cubic.InOut" });
+      }),
+    );
+  }
+
+  retexture(): void {
+    for (const t of this.tokens.values()) t.body.setTexture(unitKey(t.unit.type, t.unit.owner));
+  }
+
   setSpent(ids: number[]): void {
     for (const [id, t] of this.tokens) {
       if (ids.includes(id)) t.body.setTint(0x8a8a8a);

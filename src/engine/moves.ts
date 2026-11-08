@@ -14,6 +14,7 @@ interface Ctx {
   unit: Unit;
   from: Pos;
   out: Order[];
+  guard: boolean;
 }
 
 const makeOrder = (ctx: Ctx, to: Pos, style: MoveStyle, captures: Pos[], path: Pos[]): Order => ({
@@ -60,6 +61,13 @@ const leap = (ctx: Ctx, dirs: Dir[], style: MoveStyle): void => {
   }
 };
 
+const isGuarded = (ctx: Ctx, [r, c]: Pos): boolean => {
+  const probe = ctx.board.map((row) => row.slice());
+  probe[ctx.from[0]][ctx.from[1]] = null;
+  probe[r][c] = { ...ctx.unit, type: "pawn" };
+  return isAttacked(probe, ctx.terrain, [r, c], ctx.unit.owner === 0 ? 1 : 0, false);
+};
+
 const joust = (ctx: Ctx): void => {
   const [r0, c0] = ctx.from;
   for (const [dr, dc] of ORTHO) {
@@ -70,6 +78,7 @@ const joust = (ctx: Ctx): void => {
     const midCell = ctx.board[mid[0]][mid[1]];
     const target = ctx.board[r][c];
     if (midCell?.owner === ctx.unit.owner || target?.owner === ctx.unit.owner) continue;
+    if (ctx.guard && isGuarded(ctx, mid)) continue;
     const captures: Pos[] = [];
     if (midCell) captures.push(mid);
     if (target) captures.push([r, c]);
@@ -119,10 +128,10 @@ const GENERATORS: Record<Unit["type"], (ctx: Ctx) => void> = {
   },
 };
 
-export const pseudoMovesFor = (board: Cell[][], terrain: Terrain[][], from: Pos): Order[] => {
+export const pseudoMovesFor = (board: Cell[][], terrain: Terrain[][], from: Pos, guard = true): Order[] => {
   const unit = board[from[0]][from[1]];
   if (!unit) return [];
-  const ctx: Ctx = { board, terrain, unit, from, out: [] };
+  const ctx: Ctx = { board, terrain, unit, from, out: [], guard };
   GENERATORS[unit.type](ctx);
   return ctx.out;
 };
@@ -139,11 +148,11 @@ export const findKing = (board: Cell[][], player: PlayerId): Pos | null => {
   return found;
 };
 
-export const isAttacked = (board: Cell[][], terrain: Terrain[][], target: Pos, by: PlayerId): boolean => {
+export const isAttacked = (board: Cell[][], terrain: Terrain[][], target: Pos, by: PlayerId, guard = false): boolean => {
   const hits = (o: Order) => o.captures.some(([r, c]) => r === target[0] && c === target[1]);
   let attacked = false;
   forEachUnit(board, (u, pos) => {
-    if (!attacked && u.owner === by) attacked = pseudoMovesFor(board, terrain, pos).some(hits);
+    if (!attacked && u.owner === by) attacked = pseudoMovesFor(board, terrain, pos, guard).some(hits);
   });
   return attacked;
 };
