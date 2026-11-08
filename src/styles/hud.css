@@ -1,0 +1,247 @@
+/*
+ * Battle HUD layout. Nothing may overlap the Phaser overlay widgets: the compass bottom-left
+ * (270×268 + 20 px margin → keep the left column above y = 100% - 300 px) and the media player
+ * bottom-right (320×88, docked 84 px above the bottom → keep the right column above
+ * y = 100% - 192 px). The action bar therefore sits bottom-centre.
+ */
+:root {
+  --compass-clear: 300px;
+  --player-clear: 196px;
+  --hud-top: 92px;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#hud > * {
+  pointer-events: auto;
+}
+
+/* Top bar: faction plates either side of the turn plate. */
+.topbar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  width: min(1100px, calc(100% - 32px));
+  animation: drop-in 0.45s var(--ease) backwards;
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+}
+
+.plate {
+  --rivet: 7px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  min-width: 0;
+  transition: box-shadow 0.35s, border-color 0.35s;
+}
+
+.plate.p1 {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.plate b {
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  display: block;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+.p0 b {
+  color: var(--p0);
+}
+
+.p1 b {
+  color: var(--p1);
+}
+
+.plate small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.crest {
+  width: 34px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+}
+
+.trophies {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.p1 .trophies {
+  justify-content: flex-end;
+}
+
+.trophies img {
+  width: 16px;
+  height: 25px;
+  object-fit: contain;
+  animation: pop 0.4s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* The side whose turn it is gets its faction colour as a glow on the rim. */
+.p0-turn .plate.p0 {
+  border-color: var(--p0);
+  box-shadow: 0 0 0 1.5px var(--rim-shadow), 0 0 22px color-mix(in srgb, var(--p0) 60%, transparent), 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.p1-turn .plate.p1 {
+  border-color: var(--p1);
+  box-shadow: 0 0 0 1.5px var(--rim-shadow), 0 0 22px color-mix(in srgb, var(--p1) 60%, transparent), 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.turnplate {
+  --rivet: 7px;
+  padding: 8px 20px;
+  text-align: center;
+  min-width: 220px;
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+
+.turn-line b {
+  text-shadow: 0 0 10px currentColor;
+}
+
+.pips {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+}
+
+.pips small {
+  font: 600 10px var(--body);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.pip {
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  background: radial-gradient(circle at 35% 35%, #fff1b8, var(--gold) 45%, var(--gold-dark));
+  border: 1px solid var(--rim-shadow);
+  box-shadow: 0 0 10px rgba(242, 201, 76, 0.8);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.pip.spent {
+  background: #1a1f2a;
+  box-shadow: none;
+}
+
+.thinking {
+  font: 12px var(--body);
+  letter-spacing: 0.04em;
+  color: var(--p1);
+  margin-top: 4px;
+  animation: blink 1s infinite alternate;
+}
+
+@keyframes blink {
+  to {
+    opacity: 0.4;
+  }
+}
+
+/* Battle log: right column, kept clear of the media player below. */
+.log {
+  position: absolute;
+  right: 16px;
+  top: var(--hud-top);
+  width: 250px;
+  max-height: calc(100% - var(--hud-top) - var(--player-clear));
+  padding: 10px 14px 12px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  animation: rise 0.4s var(--ease) backwards;
+}
+
+.log ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+  min-height: 0;
+}
+
+.log li {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(242, 201, 76, 0.14);
+  color: var(--muted);
+  animation: rise 0.3s ease-out;
+}
+
+.log li i {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.deploying .log {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .log,
+  .trophies,
+  .inspector .terrain-card,
+  .deploying .inspector {
+    display: none;
+  }
+  .inspector {
+    width: calc(100% - 32px);
+    top: auto;
+    bottom: 72px;
+    max-height: 40%;
+  }
+  .deploy {
+    top: auto;
+    bottom: 72px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: 60%;
+  }
+  .turnplate {
+    min-width: 0;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}

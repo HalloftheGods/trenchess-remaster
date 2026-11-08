@@ -1,0 +1,141 @@
+/* Tokens mirror src/render/ui/fonts.ts (COLOR) and the painted plates in src/render/ui/art. */
+:root {
+  --ink: #e9e2cf;
+  --muted: #9aa3b5;
+  --gold: #f2c94c;
+  --gold-light: #ffe9a8;
+  --gold-dark: #b4821c;
+  --rim-shadow: #6a4a12;
+  --steel-top: rgba(34, 40, 54, 0.96);
+  --steel-mid: rgba(18, 22, 32, 0.96);
+  --steel-bottom: rgba(10, 12, 20, 0.97);
+  --p0: #5aa2ff;
+  --p1: #ff5a5a;
+  --display: "Cinzel", Georgia, serif;
+  --body: "Inter", system-ui, sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--body);
+  background: radial-gradient(ellipse at 50% 35%, #2d3b4a 0%, #161b24 55%, #0b0d12 100%);
+}
+
+#backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.75;
+  image-rendering: auto;
+  filter: blur(6px) saturate(1.15);
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Full-screen DOM layer (panels, game over) over the Phaser stage. */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at center, rgba(4, 6, 12, 0.2), rgba(4, 6, 12, 0.72));
+  z-index: 20;
+  padding: 16px;
+  animation: screen-in 0.3s var(--ease);
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Engine-style type: Cinzel display with tracking, Inter body. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  text-shadow: 0 1px 0 #3b2a10, 0 0 14px rgba(242, 201, 76, 0.25);
+}
+
+.caps {
+  font: 600 11px var(--body);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+kbd {
+  font: 600 10px var(--body);
+  opacity: 0.75;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.row .btn {
+  flex: 1;
+}
+
+/* Scrollbars inside the plates: thin, gold on steel. */
+.scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(242, 201, 76, 0.45) transparent;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: rgba(242, 201, 76, 0.45);
+  border-radius: 3px;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

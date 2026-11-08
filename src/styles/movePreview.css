@@ -1,0 +1,81 @@
+/* Move preview boards (src/ui/movePreview.ts), used by the showcase and the HUD unit card. */
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(11, 15px);
+  gap: 1px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(242, 201, 76, 0.18);
+}
+
+.mp-cell {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  line-height: 1;
+  color: #fff;
+}
+
+.mp-cell.light { background: #3a4252; }
+.mp-cell.dark { background: #2a303c; }
+.mp-cell.t-forest { background: #1c5e33; }
+.mp-cell.t-swamp { background: #1f4f8c; }
+.mp-cell.t-mountain { background: #7a2a2d; }
+.mp-cell.t-desert { background: #8c6a16; }
+
+.mp-cell.move {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.mp-cell.upgrade {
+  background: #f59e0b;
+  animation: glowpulse 1.2s ease-in-out infinite alternate;
+}
+
+.mp-cell.attack { background: #ef4444; }
+
+.mp-cell.blocked {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ff8a8a;
+}
+
+.mp-cell img {
+  position: absolute;
+  width: 22px;
+  height: 34px;
+  bottom: -2px;
+  object-fit: contain;
+  z-index: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
+}
+
+.mp-cell .shield {
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  z-index: 2;
+  font-style: normal;
+  font-size: 13px;
+  color: #ffd54a;
+}
+
+@keyframes glowpulse {
+  from { box-shadow: 0 0 2px rgba(245, 158, 11, 0.4); filter: brightness(0.85); }
+  to { box-shadow: 0 0 9px rgba(245, 158, 11, 0.9); filter: brightness(1.15); }
+}
+
+@media (max-width: 760px) {
+  .mp-grid {
+    grid-template-columns: repeat(11, 11px);
+  }
+  .mp-cell {
+    width: 11px;
+    height: 11px;
+  }
+}

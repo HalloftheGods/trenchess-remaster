@@ -1,0 +1,83 @@
+/*
+ * The `.steel` plate: the DOM twin of the `ui-panel` nine-slice (src/render/ui/art/plates.ts).
+ * Dark lacquered steel gradient, gold rim over a dark outer line, an inner bevel line, four
+ * domed rivets in the corners and a faint scanline overlay. Pure gradients and shadows.
+ */
+.steel {
+  --rivet: 9px;
+  position: relative;
+  isolation: isolate;
+  border-radius: 10px;
+  border: 1.5px solid #dcb343;
+  background: linear-gradient(180deg, var(--steel-top), var(--steel-mid) 50%, var(--steel-bottom));
+  box-shadow:
+    0 0 0 1.5px var(--rim-shadow),
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+}
+
+/* Inner bevel line, as the painted plate has at 6 px. */
+.steel::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(242, 201, 76, 0.18);
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%, rgba(0, 0, 0, 0.12));
+}
+
+/* Rivets and scanlines. The overlay sits above the content, so it stays faint. */
+.steel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  --dome: #fff1b8 0, #d9a93a 1.1px, #5a3d10 2.6px, rgba(0, 0, 0, 0.55) 3.1px, transparent 3.8px;
+  background:
+    radial-gradient(circle at var(--rivet) var(--rivet), var(--dome)),
+    radial-gradient(circle at calc(100% - var(--rivet)) var(--rivet), var(--dome)),
+    radial-gradient(circle at var(--rivet) calc(100% - var(--rivet)), var(--dome)),
+    radial-gradient(circle at calc(100% - var(--rivet)) calc(100% - var(--rivet)), var(--dome)),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 4px);
+}
+
+/* Smaller plates (top bar, action bar) tuck the rivets in. */
+.steel.tight {
+  --rivet: 7px;
+  border-radius: 8px;
+}
+
+.steel.tight::before {
+  inset: 3px;
+  border-radius: 5px;
+}
+
+/* Section headings inside a plate. */
+.steel h3,
+.steel h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.steel h4 {
+  font-size: 13px;
+}
+
+/* A thin gold rule under a plate heading. */
+.steel .rule {
+  height: 1px;
+  margin: 6px 0 8px;
+  background: linear-gradient(90deg, transparent, rgba(242, 201, 76, 0.55), transparent);
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+}

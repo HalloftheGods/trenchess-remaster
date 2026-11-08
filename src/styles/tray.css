@@ -1,0 +1,80 @@
+/* Deployment tray and the action bar of the battle HUD (layout rules: see hud.css). */
+/* Deployment tray: same column as the log, above the media player. */
+.deploy {
+  position: absolute;
+  right: 16px;
+  top: var(--hud-top);
+  width: 270px;
+  max-height: calc(100% - var(--hud-top) - var(--player-clear));
+  padding: 12px 14px 14px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  animation: slide-right 0.4s var(--ease) backwards;
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+
+.deploy-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.tools {
+  display: grid;
+  gap: 6px;
+  overflow: auto;
+  min-height: 0;
+  padding: 1px 2px;
+}
+
+.tool {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 7px 12px;
+}
+
+.tool.active {
+  border-color: var(--gold-light);
+  box-shadow: 0 0 0 1px var(--rim-shadow), inset 0 0 0 1px rgba(255, 230, 160, 0.35), 0 0 14px rgba(242, 201, 76, 0.6);
+}
+
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.85);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+/* Action bar: bottom-centre, between the compass and the media player. */
+.actions {
+  --rivet: 7px;
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 7px;
+  animation: lift-in 0.45s var(--ease) backwards;
+}
+
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 24px);
+  }
+}

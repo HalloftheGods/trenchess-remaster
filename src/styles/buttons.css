@@ -1,0 +1,137 @@
+/*
+ * `.btn` is the DOM twin of `ui-btn` (src/render/ui/art/plates.ts LOOKS): a steel gradient,
+ * gold rim over a dark outer line, an inset highlight and four tiny rivets. `.primary` is the
+ * brass `ui-btn-primary`. Hover lifts the gradient and adds a gold glow; active presses it in.
+ */
+.btn {
+  --top: #3a4458;
+  --mid: #232a3a;
+  --bottom: #141926;
+  --inset: rgba(255, 255, 255, 0.1);
+  --rivet: 6px;
+  --dome: #fff1b8 0, #d9a93a 0.8px, #5a3d10 1.8px, rgba(0, 0, 0, 0.5) 2.2px, transparent 2.8px;
+  position: relative;
+  font: 600 14px var(--body);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at var(--rivet) var(--rivet), var(--dome)),
+    radial-gradient(circle at calc(100% - var(--rivet)) var(--rivet), var(--dome)),
+    radial-gradient(circle at var(--rivet) calc(100% - var(--rivet)), var(--dome)),
+    radial-gradient(circle at calc(100% - var(--rivet)) calc(100% - var(--rivet)), var(--dome)),
+    linear-gradient(180deg, var(--top), var(--mid) 50%, var(--bottom));
+  border: 1.25px solid #d9ae3c;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px var(--rim-shadow),
+    inset 0 0 0 1px var(--inset),
+    0 3px 8px rgba(0, 0, 0, 0.45);
+  padding: 9px 14px;
+  cursor: pointer;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  transition: transform 0.08s, box-shadow 0.18s, color 0.18s;
+}
+
+.btn:hover:not(:disabled) {
+  --top: #4c5a74;
+  --mid: #2d3650;
+  --bottom: #1a2133;
+  --inset: rgba(255, 230, 160, 0.25);
+  box-shadow:
+    0 0 0 1px var(--rim-shadow),
+    inset 0 0 0 1px var(--inset),
+    0 0 16px rgba(242, 201, 76, 0.45),
+    0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.btn:active:not(:disabled) {
+  --top: #161b28;
+  --mid: #1d2432;
+  --bottom: #2a3344;
+  --inset: rgba(0, 0, 0, 0.35);
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  --top: #2a2e38;
+  --mid: #20242d;
+  --bottom: #181b22;
+  --inset: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  border-color: #4a4f5c;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), inset 0 0 0 1px var(--inset);
+  opacity: 0.75;
+  cursor: default;
+}
+
+.btn.primary {
+  --top: #ffe39a;
+  --mid: #e2b23a;
+  --bottom: #9c6b14;
+  --inset: rgba(255, 255, 255, 0.35);
+  color: #2a1c06;
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.btn.primary:hover:not(:disabled) {
+  --top: #fff2c2;
+  --mid: #f3c651;
+  --bottom: #b07d1c;
+  --inset: rgba(255, 255, 255, 0.5);
+}
+
+.btn.primary:active:not(:disabled) {
+  --top: #b07d1c;
+  --mid: #d9a93a;
+  --bottom: #e2b23a;
+}
+
+.btn.primary kbd {
+  color: #4a3410;
+  opacity: 0.8;
+}
+
+.btn.icon {
+  padding: 8px 11px;
+  min-width: 40px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.btn.panel-close {
+  width: 78px;
+  padding: 6px 10px;
+}
+
+/* Segment of a segmented control, the twin of `ui-seg` / `ui-seg-on`. */
+.seg {
+  font: 700 10px var(--body);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: linear-gradient(180deg, rgba(40, 46, 60, 0.9), rgba(16, 19, 28, 0.9));
+  border: 1px solid rgba(242, 201, 76, 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: box-shadow 0.18s, color 0.18s;
+}
+
+.seg:hover {
+  color: var(--ink);
+  box-shadow: 0 0 12px rgba(242, 201, 76, 0.35);
+}
+
+.seg.active {
+  color: #2a1c06;
+  background: linear-gradient(180deg, #ffe39a, #d9a93a 55%, #8f6112);
+  border-color: #fff3cc;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}

@@ -193,6 +193,9 @@ export class Hud {
     const flavor = options.opponent === "ai" ? flavors[String(outcome.winner)] ?? "" : "";
     $(".over-title", over).textContent = title;
     $(".over-text", over).textContent = `${REASONS[outcome.reason]} ${flavor} (${s.turn} turns)`;
+    // The card's rim and title take the winner's faction colour; a draw stays gold.
+    const accent = outcome.winner === null ? "var(--gold)" : FACTIONS[outcome.winner].css;
+    $(".over-card", over).style.setProperty("--accent", accent);
     over.classList.remove("hidden");
   }
 }
