@@ -184,7 +184,7 @@ const PLANTER: Grid = [
 ];
 
 const paintFront = (p: PixelPainter): void => {
-  const pal = { h: "#0a1018", c: NEON.cyan, b: "#080c12" };
+  const pal = { h: "#16202c", c: NEON.cyan, b: "#0c1118" };
   for (const x of [-8, 128, 232]) p.stamp(PLANTER, x, p.h - PLANTER.length, pal);
   // hologram saplings flickering in two of the planters
   holoPine(p, 8, p.h - 9, 18, HOLO, p.h - 18);
