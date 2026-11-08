@@ -19,6 +19,8 @@ export const createGame = (board: Cell[][], terrain: Terrain[][], config: GameCo
   current: 0,
   ordersPerTurn: config.ordersPerTurn,
   ordersLeft: 1,
+  checkEndsTurn: config.checkEndsTurn ?? true,
+  turnStart: null,
   acted: [],
   turn: 1,
   outcome: null,
@@ -52,10 +54,32 @@ const resolveOrder = (s: GameState, order: Order): Unit[] => {
   return victims;
 };
 
-export const isLegal = (s: GameState, order: Order): boolean => {
+const leavesKingSafe = (s: GameState, order: Order): boolean => {
   const next = cloneState(s);
   resolveOrder(next, order);
   return !isInCheck(next, s.current);
+};
+
+const givesCheck = (s: GameState, order: Order): boolean => {
+  const next = cloneState(s);
+  resolveOrder(next, order);
+  return isInCheck(next, opponent(s.current));
+};
+
+const isSecondOrder = (s: GameState): boolean => s.checkEndsTurn && s.turnStart !== null && s.acted.length === 1;
+
+/** The 2nd order replayed as if the 1st never happened, or null when it only works because of the 1st. */
+const withoutFirst = (s: GameState, order: Order): Order | null => {
+  const start = s.turnStart!;
+  const probe: GameState = { ...s, board: start.board.map((row) => row.slice()), acted: [], fallen: [start.fallen[0].slice(), start.fallen[1].slice()] };
+  const twin = pseudoMovesFor(probe.board, s.terrain, order.from).find((o) => o.to[0] === order.to[0] && o.to[1] === order.to[1]);
+  return twin && leavesKingSafe(probe, twin) ? twin : null;
+};
+
+export const isLegal = (s: GameState, order: Order): boolean => {
+  if (!leavesKingSafe(s, order)) return false;
+  // A checking 2nd order recalls the 1st piece, so it has to stand on its own.
+  return !isSecondOrder(s) || !givesCheck(s, order) || withoutFirst(s, order) !== null;
 };
 
 export const legalOrders = (s: GameState): Order[] => (s.outcome ? [] : pseudoOrders(s).filter((o) => isLegal(s, o)));
@@ -84,6 +108,7 @@ const startTurn = (s: GameState, detectMate: boolean): void => {
   s.turn += 1;
   s.ordersLeft = s.ordersPerTurn;
   s.acted = [];
+  s.turnStart = null;
   if (s.outcome || !detectMate) return;
   if (legalOrders(s).length > 0) return;
   const mated = isInCheck(s, s.current);
@@ -98,12 +123,38 @@ export const endTurn = (s: GameState, detectMate = true): TurnEvent[] => {
   return events;
 };
 
+const snapshotTurn = (s: GameState): void => {
+  if (s.acted.length > 0 || s.ordersLeft < 2) return;
+  s.turnStart = { board: s.board.map((row) => row.slice()), fallen: [s.fallen[0].slice(), s.fallen[1].slice()] };
+};
+
+/** Undo the 1st order and replay the checking 2nd one on the board as it stood at the start of the turn. */
+const recallFirst = (s: GameState, twin: Order): TurnEvent => {
+  const start = s.turnStart!;
+  const first = s.acted[0];
+  s.board = start.board.map((row) => row.slice());
+  s.fallen = [start.fallen[0].slice(), start.fallen[1].slice()];
+  s.acted = [];
+  resolveOrder(s, twin);
+  s.acted.unshift(first);
+  let at: Pos | undefined;
+  forEachUnit(s.board, (u, pos) => {
+    if (u.id === first) at = pos;
+  });
+  return { kind: "recall", player: s.current, victims: [], at };
+};
+
 export const applyOrder = (s: GameState, order: Order, detectMate = true): TurnEvent[] => {
+  const second = isSecondOrder(s);
+  const twin = second ? withoutFirst(s, order) : null;
+  snapshotTurn(s);
   const victims = resolveOrder(s, order);
   const events: TurnEvent[] = [{ kind: "order", player: s.current, order, victims }];
   if (order.promotes) events.push({ kind: "promote", player: s.current, victims: [], at: order.to });
+  const gaveCheck = s.checkEndsTurn && isInCheck(s, opponent(s.current));
+  if (gaveCheck && twin) events.push(recallFirst(s, twin));
   kingOutcome(s);
-  s.ordersLeft -= 1;
+  s.ordersLeft = gaveCheck ? 0 : s.ordersLeft - 1;
   const exhausted = s.ordersLeft <= 0 || pseudoOrders(s).length === 0;
   if (s.outcome || !exhausted) return events;
   return events.concat(endTurn(s, detectMate));

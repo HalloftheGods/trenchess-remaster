@@ -36,7 +36,8 @@ See the header of `scripts/simulate.ts` for every option. Needs Node 22+.
   chessboard with the armies on the edge rows and 8 terrain tiles a side.
 - **Deployment:** place up to 16 terrain tiles in your half and arrange your
   army inside your back four rows (or let the battlefield randomize).
-- **Orders:** Command mode gives 2 orders per turn, each to a different unit
+- **Orders:** Command mode gives 2 orders per turn, each to a different unit,
+  but an order that puts the enemy king in check ends your turn
   (the opening turn gets 1). Classic mode is 1 order per turn.
 - **Terrain:** forests block rooks and knights; swamps block bishops and
   knights; mountains block rooks and bishops. Deserts admit everyone but stop

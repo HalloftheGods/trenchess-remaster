@@ -19,6 +19,7 @@
  *   --orders       orders per turn, comma list: 1 = Classic, 2 = Command (default 1,2)
  *   --battlefield  random | open                                (default random)
  *   --terrain      scale (8 tiles on 8x8, 12x12 density elsewhere) | fixed (16 a side) (default scale)
+ *   --check-rule   on | off: a check ends a Command turn and recalls the 1st order (default on)
  *   --max-turns    turn cap before a game counts as a timeout   (default 400)
  *   --workers      parallel processes                           (default CPU count - 1)
  *   --seed         base seed                                    (default 1)
@@ -44,6 +45,7 @@ interface Job {
   terrainMode: string;
   maxTurns: number;
   seed: number;
+  checkEndsTurn: boolean;
 }
 
 interface GameResult {
@@ -116,7 +118,7 @@ const playGame = async (job: Job): Promise<GameResult> => {
   m.rules.setBoardSize(job.size, terrainQuota(job.size, job.terrainMode));
   const started = performance.now();
   const { board, terrain } = buildBattlefield(m, job);
-  const s = m.game.createGame(board, terrain, { ordersPerTurn: job.orders });
+  const s = m.game.createGame(board, terrain, { ordersPerTurn: job.orders, checkEndsTurn: job.checkEndsTurn });
   const rng = m.setup.seededRng(job.seed * 7919 + 17);
   let orderCount = 0;
   let firstCaptureTurn: number | null = null;
@@ -292,6 +294,7 @@ const runMain = async () => {
   const battlefield = args.battlefield ?? "random";
   const terrainMode = args.terrain ?? "scale";
   const maxTurns = Number(args["max-turns"] ?? 400);
+  const checkEndsTurn = (args["check-rule"] ?? "on") !== "off";
   const seed = Number(args.seed ?? 1);
   const workers = Math.max(1, Number(args.workers ?? Math.max(1, availableParallelism() - 1)));
 
@@ -301,12 +304,12 @@ const runMain = async () => {
       for (const size of sizes) {
         // Same seed across sizes and modes so comparisons share terrain RNG streams; alternate who is Azure.
         const ai: [string, string] = g % 2 === 0 ? [aiA, aiB] : [aiB, aiA];
-        jobs.push({ size, orders, ai, battlefield, terrainMode, maxTurns, seed: seed * 100003 + g });
+        jobs.push({ size, orders, ai, battlefield, terrainMode, maxTurns, seed: seed * 100003 + g, checkEndsTurn });
       }
     }
   }
 
-  const cfg = { sizes: sizes.join(","), orders: ordersList.join(","), games, ai: `${aiA}:${aiB}`, battlefield, terrain: terrainMode, maxTurns, seed };
+  const cfg = { sizes: sizes.join(","), orders: ordersList.join(","), games, ai: `${aiA}:${aiB}`, battlefield, terrain: terrainMode, maxTurns, seed, checkRule: checkEndsTurn ? "on" : "off" };
   console.error(`Running ${jobs.length} games on ${workers} worker(s)...`);
   const results: GameResult[] = [];
   const started = Date.now();

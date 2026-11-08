@@ -151,7 +151,9 @@ export class Hud {
   log(e: TurnEvent, before: Cell[][]): void {
     const li = document.createElement("li");
     const who = FACTIONS[e.player];
-    if (e.kind === "perish") {
+    if (e.kind === "recall") {
+      li.innerHTML = `Check! <i style="color:${who.css}">first order</i> recalled${e.at ? ` to ${coord(e.at)}` : ""}`;
+    } else if (e.kind === "perish") {
       li.innerHTML = `<i style="color:${FACTIONS[e.victims[0].owner].css}">${UNIT_LORE[e.victims[0].type].title}</i> perished in the desert`;
     } else if (e.order) {
       const o = e.order;
