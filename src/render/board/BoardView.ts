@@ -13,7 +13,8 @@ export class BoardView {
   private markers: Phaser.GameObjects.Image[] = [];
   private preview: Phaser.GameObjects.Image[] = [];
   private hover: Phaser.GameObjects.Image;
-  private terrain: Terrain[][] = [];
+  /** The terrain the tiles show; pass it back to `setTerrain` to redress every cell after a texture repaint. */
+  terrain: Terrain[][] = [];
   /** The projection the tiles are currently dressed for. */
   private dressed: Projection = getProjection();
   private scratch: TileMove[] = Array.from({ length: MOVE_SLOTS }, () => ({ obj: null as unknown as Phaser.GameObjects.Image, y: 0, layer: 0 }));

@@ -10,6 +10,9 @@ import { SetupRows } from "./setup/SetupRows";
 import { OnlinePanel } from "./setup/OnlinePanel";
 import { BACKDROP_CHOICES, backdrop, type BackdropMode } from "../board/backdropMode";
 import { BOARDS, COMMANDERS, MODES, OPPONENTS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES, loadOptions, saveOptions } from "./setup/choices";
+import { WORLD_LABELS, WORLD_ORDER, WORLD_TAGLINES, world } from "../art/worlds/registry";
+
+const WORLD_CHOICES = WORLD_ORDER.map((id) => ({ id, label: WORLD_LABELS[id], hint: WORLD_TAGLINES[id] }));
 
 export const PANEL_W = 420;
 const MARGIN = 24;
@@ -69,6 +72,8 @@ export class SetupScene extends Phaser.Scene {
     this.battlefield = new Carousel(this, 0, 0, INNER, PRESET_CHOICES, this.presetIndex(), (i) => this.set({ preset: PRESET_CHOICES[i].id }));
     this.rows.row("Battlefield", this.battlefield, this.options.mode === "chi");
     this.rows.row("Board", new Segmented(this, 0, 0, INNER, BOARDS, this.options.board, (id) => this.set({ board: id as MatchOptions["board"] })));
+    const worldAt = Math.max(0, WORLD_ORDER.indexOf(world.id));
+    this.rows.row("World", new Carousel(this, 0, 0, INNER, WORLD_CHOICES, worldAt, (i) => this.game.events.emit("ui:world", WORLD_CHOICES[i].id)));
     this.rows.row("Opponent", new Segmented(this, 0, 0, INNER, OPPONENTS, this.options.opponent, (id) => this.setOpponent(id as MatchOptions["opponent"])));
     this.commander = new Segmented(this, 0, 0, INNER, COMMANDERS, this.options.difficulty, (id) => this.set({ difficulty: id as Difficulty }));
     this.rows.row("Commander", this.commander);

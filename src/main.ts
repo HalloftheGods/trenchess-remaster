@@ -14,6 +14,11 @@ import { sfx } from "./audio/sfx";
 import { music } from "./audio/music";
 import { Backdrop } from "./render/backdrop/Backdrop";
 import { terrainStrip } from "./render/art/terrainStrip";
+import { paintTerrain } from "./render/art/terrainArt";
+import { paintDecor } from "./render/art/decorArt";
+import { paintSky } from "./render/art/skyArt";
+import { paintPlinth } from "./render/art/plinthArt";
+import { applyWorld, isWorldId } from "./render/art/worlds/registry";
 import { bindViewControls } from "./ui/viewControls";
 import { loadBackdropMode, saveBackdropMode, type BackdropMode } from "./render/board/backdropMode";
 
@@ -57,6 +62,19 @@ const setTheme = (style: PieceStyle, palette: PaletteId): void => {
 };
 
 const nextStyle = (): void => setTheme(STYLE_ORDER[(STYLE_ORDER.indexOf(theme.style) + 1) % STYLE_ORDER.length], theme.palette);
+
+/** Switch the terrain world: repaint every world-keyed texture, then redress the board and backdrop. */
+const setWorld = (id: unknown): void => {
+  if (!isWorldId(id)) return;
+  applyWorld(id);
+  paintTerrain(scene);
+  paintDecor(scene);
+  paintSky(scene);
+  paintPlinth(scene);
+  scene.backdrop.retexture();
+  scene.board.setTerrain(scene.board.terrain);
+  match.refresh();
+};
 
 const PREVIEWS: Record<string, () => void> = {
   terrain: () => match.showcase(Math.floor(Math.random() * 1e6)),
@@ -130,6 +148,7 @@ const bindFlow = (): void => {
   });
   ev.on("ui:setup-changed", (options: MatchOptions) => match.preview(options));
   ev.on("ui:theme", ({ style, palette }: { style: PieceStyle; palette: PaletteId }) => setTheme(style, palette));
+  ev.on("ui:world", (id: string) => setWorld(id));
   ev.on("ui:start", (options: MatchOptions) => startMatch(options));
   ev.on("ui:start-online", (start: OnlineStart) => startMatch(start.options, start));
   ev.on("ui:back", toTitle);
