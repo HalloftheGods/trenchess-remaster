@@ -45,6 +45,7 @@ export class BattleScene extends Phaser.Scene {
     this.board = new BoardView(this);
     this.units = new UnitView(this, this.board, this.fx);
     this.clouds();
+    this.time.addEvent({ delay: 450, loop: true, callback: () => this.desertHeat() });
     this.fit();
     this.scale.on("resize", () => this.fit());
     this.bindInput();
@@ -78,6 +79,14 @@ export class BattleScene extends Phaser.Scene {
       const c = this.add.image(-900 + i * 500, -100 + i * 140, "cloud").setScale(3.2, 2).setAlpha(0.14).setDepth(TOP_LAYER - 20);
       this.tweens.add({ targets: c, x: c.x + 1800, duration: 60000 + i * 9000, repeat: -1, onRepeat: () => c.setX(-1100) });
     }
+  }
+
+  private desertHeat(): void {
+    const sands = this.board.cellsOf("desert");
+    if (!sands.length) return;
+    const [r, c] = Phaser.Utils.Array.GetRandom(sands);
+    const { x, y } = this.board.center(r, c);
+    this.fx.heat(x + Phaser.Math.Between(-18, 18), y);
   }
 
   fit(): void {

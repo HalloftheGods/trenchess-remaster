@@ -151,7 +151,7 @@ export class Hud {
     void b.offsetWidth;
     b.classList.add("go");
     clearTimeout(this.bannerTimer);
-    this.bannerTimer = window.setTimeout(() => b.classList.add("hidden"), 2200);
+    this.bannerTimer = window.setTimeout(() => b.classList.add("hidden"), 1700);
   }
 
   gameOver(outcome: Outcome, options: MatchOptions, s: GameState): void {

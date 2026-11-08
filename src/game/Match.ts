@@ -246,6 +246,7 @@ export class Match {
       this.boardView.showMarkers(mine.filter((o) => o.captures.length).map((o) => o.to), "attack");
     }
     this.units.highlight(this.selected ? s.board[this.selected[0]][this.selected[1]]?.id ?? null : null);
+    this.units.setSpent(s.acted);
     this.hud.updateBattle(s, this.options, this.isHuman(s.current));
   }
 
@@ -331,8 +332,11 @@ export class Match {
     else if (humanWon) sfx.victory();
     else sfx.defeat();
     this.boardView.setFog(null);
+    this.boardView.clearMarkers();
+    this.units.setSpent([]);
     this.units.setVisibility(() => true, s.board);
-    this.hud.gameOver(outcome, this.options, s);
+    if (outcome.winner !== null) this.units.celebrate(outcome.winner);
+    setTimeout(() => this.hud.gameOver(outcome, this.options, s), 1800);
   }
 
   quit(): void {

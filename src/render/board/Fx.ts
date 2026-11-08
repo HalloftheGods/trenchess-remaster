@@ -93,6 +93,27 @@ export class Fx {
     this.scene.tweens.add({ targets: t, y: y - 46, alpha: 0, duration: 1300, ease: "Cubic.Out", onComplete: () => t.destroy() });
   }
 
+  firework(x: number, y: number, color: number): void {
+    const p = this.scene.add.particles(x, y, "spark", {
+      speed: { min: 120, max: 300 },
+      scale: { start: 1.6, end: 0 },
+      lifespan: { min: 700, max: 1100 },
+      gravityY: 160,
+      tint: [color, 0xffffff],
+      blendMode: "ADD",
+      emitting: false,
+    });
+    p.setDepth(TOP_LAYER + 3);
+    p.explode(48);
+    this.flash(x, y, 2.2, color);
+    this.scene.time.delayedCall(1300, () => p.destroy());
+  }
+
+  heat(x: number, y: number): void {
+    const d = this.scene.add.image(x, y, "dust").setTint(0xf3dca2).setAlpha(0).setScale(0.4).setDepth(TOP_LAYER - 30);
+    this.scene.tweens.add({ targets: d, y: y - 40, alpha: { from: 0.5, to: 0 }, scale: 0.9, duration: 1600, ease: "Sine.Out", onComplete: () => d.destroy() });
+  }
+
   shake(intensity = 0.004, duration = 180): void {
     this.scene.cameras.main.shake(duration, intensity);
   }

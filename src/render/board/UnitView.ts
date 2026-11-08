@@ -209,6 +209,30 @@ export class UnitView {
     await this.wait(400);
   }
 
+  setSpent(ids: number[]): void {
+    for (const [id, t] of this.tokens) {
+      if (ids.includes(id)) t.body.setTint(0x8a8a8a);
+      else t.body.clearTint();
+    }
+  }
+
+  celebrate(owner: 0 | 1): void {
+    const color = tint(owner);
+    let i = 0;
+    for (const t of this.tokens.values()) {
+      if (t.unit.owner !== owner) continue;
+      const delay = i++ * 90;
+      this.scene.tweens.add({ targets: t.body, y: -26, duration: 260, yoyo: true, repeat: 3, delay, ease: "Quad.Out" });
+    }
+    for (let k = 0; k < 9; k++) {
+      this.scene.time.delayedCall(k * 320, () => {
+        const x = Phaser.Math.Between(-420, 420);
+        const y = Phaser.Math.Between(-60, 380);
+        this.fx.firework(x, y, k % 2 ? color : 0xf2c94c);
+      });
+    }
+  }
+
   pulse(unitId: number): void {
     const t = this.tokens.get(unitId);
     if (!t) return;

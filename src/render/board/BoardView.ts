@@ -12,6 +12,8 @@ interface TileSprites {
   back: Phaser.GameObjects.Image;
   front: Phaser.GameObjects.Image;
   fog: Phaser.GameObjects.Image;
+  shimmer: Phaser.Tweens.Tween | null;
+  glint: Phaser.GameObjects.Image;
 }
 
 const variantOf = (r: number, c: number): number => (r * 7 + c * 13) % VARIANTS;
@@ -36,7 +38,8 @@ export class BoardView {
     const back = this.scene.add.image(x, y, "__DEFAULT").setOrigin(0.5, TILE_ORIGIN_Y).setDepth(depthOf(r, c, LAYER.backDecor)).setVisible(false);
     const front = this.scene.add.image(x, y, "__DEFAULT").setOrigin(0.5, TILE_ORIGIN_Y).setDepth(depthOf(r, c, LAYER.frontDecor)).setVisible(false);
     const fog = this.scene.add.image(x, y, "fog").setDepth(depthOf(r, c, LAYER.fx)).setVisible(false);
-    return { tile, back, front, fog };
+    const glint = this.scene.add.image(x, y, "glow").setBlendMode("ADD").setTint(0x9fffe0).setScale(1, 0.35).setAlpha(0).setDepth(depthOf(r, c, LAYER.marker)).setVisible(false);
+    return { tile, back, front, fog, glint, shimmer: null };
   }
 
   setTerrain(terrain: Terrain[][]): void {
@@ -57,6 +60,15 @@ export class BoardView {
       s.back.setTexture(decorKey("back", t, v));
       s.front.setTexture(decorKey("front", t, v));
     }
+    this.setShimmer(s, t === "swamp", y - lift);
+  }
+
+  private setShimmer(s: TileSprites, on: boolean, y: number): void {
+    s.shimmer?.remove();
+    s.shimmer = null;
+    s.glint.setVisible(on).setY(y).setAlpha(0);
+    if (!on) return;
+    s.shimmer = this.scene.tweens.add({ targets: s.glint, alpha: 0.22, duration: 1400 + Math.random() * 900, yoyo: true, repeat: -1, delay: Math.random() * 1500, ease: "Sine.InOut" });
   }
 
   pop(r: number, c: number): void {
@@ -102,7 +114,9 @@ export class BoardView {
     this.tiles.forEach((row, r) => row.forEach((s, c) => s.fog.setVisible(visible !== null && !visible[r][c])));
   }
 
-  swampTiles(): Phaser.GameObjects.Image[] {
-    return this.tiles.flatMap((row, r) => row.filter((_, c) => this.terrain[r][c] === "swamp").map((s) => s.tile));
+  cellsOf(kind: Terrain): Pos[] {
+    const out: Pos[] = [];
+    this.terrain.forEach((row, r) => row.forEach((t, c) => t === kind && out.push([r, c])));
+    return out;
   }
 }

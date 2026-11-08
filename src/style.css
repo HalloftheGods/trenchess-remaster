@@ -514,7 +514,7 @@ kbd {
   position: fixed;
   left: 0;
   right: 0;
-  top: 38%;
+  top: 16%;
   z-index: 15;
   pointer-events: none;
   text-align: center;
@@ -526,7 +526,7 @@ kbd {
 }
 
 #banner.go {
-  animation: sweep 2.2s ease-in-out forwards;
+  animation: sweep 1.7s ease-in-out forwards;
 }
 
 #banner h2 {
