@@ -10,6 +10,8 @@ export interface DuelRequest {
   terrain: Terrain;
   attackerOwner: PlayerId;
   mode?: DuelMode;
+  /** True when the capture used the chessman's upgraded move, so it plays its named ability; false plays its classic attack. Default true. */
+  special?: boolean;
 }
 
 export interface DuelHost {

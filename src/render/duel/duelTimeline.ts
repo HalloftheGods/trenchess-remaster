@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { UNIT_LORE } from "../../game/lore";
 import type { DuelMode } from "./duel";
-import { ABILITIES, moveTo, type Ctx } from "./duelAbilities";
+import { ABILITIES, classicAttack, moveTo, type Ctx } from "./duelAbilities";
 import { duelSound } from "./duelSound";
 import { factionTint, type DuelStage } from "./DuelStage";
 
@@ -158,9 +158,11 @@ const curtain = async (s: DuelStage, ms: number): Promise<void> => {
 export const playDuel = async (c: Ctx): Promise<void> => {
   const { s, r } = c;
   await entrance(c);
-  s.hud.ability(UNIT_LORE[s.a.unit.type].ability, s.dir, r.full ? 1200 : 700);
+  const lore = UNIT_LORE[s.a.unit.type];
+  const special = s.req.special !== false;
+  s.hud.ability(special ? lore.ability : lore.classicMove, s.dir, r.full ? 1200 : 700);
   await r.wait(r.full ? 160 : 60);
-  await ABILITIES[s.a.unit.type](c);
+  await (special ? ABILITIES[s.a.unit.type] : classicAttack)(c);
   await fall(c);
   await triumph(c);
   if (r.isSkipped) {

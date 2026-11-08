@@ -71,6 +71,7 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   const [dL, defender] = select("Defender", TYPES, unitName, "pawn");
   const [sL, side] = select("Attacker side", ["0", "1"], (o) => (o === "0" ? "Left (player 1)" : "Right (player 2)"), "0");
   const [tL, terrain] = select("Terrain", TERRAINS, (t) => `${TERRAIN_LORE[t].subtitle}`, "flat");
+  const [vL, move] = select("Attack", ["ability", "classic"], (m) => (m === "ability" ? "Ability (upgraded move)" : "Classic move"), "ability");
   const [mL, mode] = select("Speed", MODES, (m) => (m === "full" ? "Full" : "Fast"), "full");
   const palettes = Object.keys(PALETTES) as PaletteId[];
   const [pL, palette] = select("Colours", palettes, (p) => `${PALETTES[p][0].name} · ${PALETTES[p][1].name}`, theme.palette);
@@ -81,7 +82,7 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   const play = async (a: UnitType, d: UnitType): Promise<void> => {
     if (palette() !== theme.palette) game.events.emit("ui:theme", { style: theme.style ?? STYLE_ORDER[0], palette: palette() });
     const owner = Number(side()) as PlayerId;
-    await duels.play({ attacker: { id: id++, type: a, owner }, defender: { id: id++, type: d, owner: (1 - owner) as PlayerId }, terrain: terrain(), attackerOwner: owner, mode: mode() });
+    await duels.play({ attacker: { id: id++, type: a, owner }, defender: { id: id++, type: d, owner: (1 - owner) as PlayerId }, terrain: terrain(), attackerOwner: owner, mode: mode(), special: move() === "ability" });
   };
   const run = async (fn: () => Promise<void>): Promise<void> => {
     if (isBusy) return;
@@ -104,7 +105,7 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   duelRow.append(
     button("▶ Play duel", () => void run(() => play(attacker(), defender()))),
     loopBtn,
-    button("All six abilities", () => void run(async () => {
+    button("All six attackers", () => void run(async () => {
       for (const t of TYPES) await play(t, defender());
     })),
   );
@@ -132,6 +133,6 @@ export const mountDevPanel = (game: Phaser.Game): void => {
   const note = document.createElement("div");
   note.className = "note";
   note.textContent = "Any key or click on the game skips a duel. Click the title bar to fold this panel.";
-  body.append(h1, aL, dL, sL, tL, mL, pL, duelRow, h2, sceneRow, note);
+  body.append(h1, aL, dL, vL, sL, tL, mL, pL, duelRow, h2, sceneRow, note);
   document.body.append(root);
 };
