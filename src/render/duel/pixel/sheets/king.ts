@@ -86,7 +86,7 @@ interface Blade {
 
 const at = (b: Blade, t: number): P => [Math.round(b.g[0] + b.u[0] * t), Math.round(b.g[1] + b.u[1] * t)];
 
-const drawSword = (b: Blade): { layer: Layer; tip: P; hands: [P, P] } => {
+const drawSword = (b: Blade, grip: [number, number] = [-5, -2]): { layer: Layer; tip: P; hands: [P, P] } => {
   const l = new Layer();
   const len = b.len ?? 19;
   const vertical = Math.abs(b.u[1]) >= Math.abs(b.u[0]);
@@ -119,7 +119,7 @@ const drawSword = (b: Blade): { layer: Layer; tip: P; hands: [P, P] } => {
     if (Math.abs(o) <= 1) l.set(...q, "g");
   }
   l.set(...side(at(b, 0), 0), "R");
-  return { layer: l, tip: at(b, len + 1), hands: [at(b, -2), at(b, -5)] };
+  return { layer: l, tip: at(b, len + 1), hands: [at(b, grip[0]), at(b, grip[1])] };
 };
 
 // ---------------------------------------------------------------- parts
@@ -130,14 +130,14 @@ const HEAD: Grid = [
   ".yy..YYy.yg.",
   ".yYYYYRyyyg.",
   ".gggggggggg.",
-  "HHhhhhhsss..",
-  "HHHhhssssss.",
-  "HHhhSssosss.",
-  "HHhSSssssss.",
-  ".HHSssssss..",
-  ".HhhSshhhh..",
-  "..Hhhhhhhh..",
-  "...Hhhhh....",
+  "hhhhhHsssss.",
+  "hhhhHSssHss.",
+  "hhhHSsSsoss.",
+  "HhhHSssssss",
+  ".HHHSsssssSs",
+  ".HHhSShhhhS.",
+  "..HhhhhhhH..",
+  "...HHhhhH...",
 ];
 
 const TORSO: Grid = [
@@ -180,27 +180,32 @@ const SKIRT: Grid = [
 ];
 
 const CAPE: Grid = [
-  ".......NNNN.",
-  "......NDDNN.",
-  ".....NDDDNN.",
-  "....NDDDNNN.",
-  "....NDDNDNN.",
-  "...NDDNNDNN.",
-  "...NDDNDDNN.",
-  "..NDDNNDDNN.",
-  "..NDDNNDNNN.",
-  "..NDNNDDNNN.",
-  ".NDDNNDDNNN.",
-  ".NDDNDDNNNN.",
-  ".NDNNDDNNNN.",
-  "NDDNNDNNNN..",
-  "NDDNDDNNNN..",
-  "NDNNDDNNN...",
-  "NDNNDNNNN...",
-  "NNDNNDNNN...",
-  "NNNNNNNN....",
-  "NNN.NNN.....",
+  ".........NNN",
+  "........NDDN",
+  ".......NDDDN",
+  ".......BDDNN",
+  "......BDDDNN",
+  "......BDDNNN",
+  ".....BDDDNNN",
+  ".....BDDNDNN",
+  "....BDDDNDNN",
+  "....BDDNNDDN",
+  "...BDDDNNDDN",
+  "...BDDNNDDDN",
+  "...BDDNNDDNN",
+  "..BDDDNNDDNN",
+  "..BDDNNDDDNN",
+  "..BDDNNDDNNN",
+  ".BDDDNNDDNNN",
+  ".BDDNNNDDNNN",
+  ".BDDNNDDDNNN",
+  "BDDDNNDDNNNN",
+  "BDDNNNDDNNNN",
+  "BDDNNDDDNNN.",
+  "yyyNNyyyNN..",
+  ".gg...gg....",
 ];
+
 
 const FOOTG: Grid = [
   "MMmk...",
@@ -209,10 +214,32 @@ const FOOTG: Grid = [
 ];
 
 const GAUNT: Grid = [
-  "MMm",
+  "WMm",
   "Mmk",
   "mkk",
 ];
+
+/** Elbow cop: a round plate with a lit top-left. */
+const ELBOW: Grid = [
+  ".Mm.",
+  "MWMk",
+  "mMmk",
+  ".kk.",
+];
+
+/** Arm from shoulder through elbow to hand: steel tube, elbow cop, gold cuff above the gauntlet. */
+const arm = (l: Layer, sh: P, el: P, hand: P, ramp: string[], far = false): void => {
+  limb(l, [sh, el, hand], ramp);
+  const n = Math.max(Math.abs(hand[0] - el[0]), Math.abs(hand[1] - el[1]));
+  if (n > 3) {
+    const t = (n - 2) / n;
+    const c: P = [Math.round(el[0] + (hand[0] - el[0]) * t), Math.round(el[1] + (hand[1] - el[1]) * t)];
+    const vertical = Math.abs(hand[1] - el[1]) >= Math.abs(hand[0] - el[0]);
+    [-1, 0, 1].forEach((o) => l.set(vertical ? c[0] + o : c[0], vertical ? c[1] : c[1] + o, far ? "g" : o < 1 ? "y" : "g"));
+  }
+  if (!far) l.stamp(ELBOW, el[0] - 1, el[1] - 1);
+  l.stamp(far ? ["mmk", "mkk", "kkk"] : GAUNT, hand[0] - 1, hand[1] - 1);
+};
 
 // ---------------------------------------------------------------- pose
 
@@ -231,13 +258,19 @@ interface Pose {
   nearElbow: P;
   farElbow: P;
   blade: Blade;
-  /** Which grip point the near hand takes: 0 = by the guard, 1 = by the pommel. */
-  nearHand?: 0 | 1;
+  /** Grip positions (steps behind the guard) of the near and far hand. */
+  grip?: [number, number];
+  /** Torso rows folded away (chest bending forward). */
+  squash?: number;
+  /** Draw the sword behind the body (overhead windups). */
+  swordBehind?: boolean;
+  /** The far hand leaves the grip and goes here. */
+  farFree?: P;
   smear?: { c: P; r: number; a0: number; a1: number };
   glint?: boolean;
 }
 
-const LEG = ["W", "M", "m", "k"];
+const LEG = ["M", "W", "m", "k"];
 const ARM = ["M", "m", "k"];
 const FAR = ["m", "k", "k"];
 
@@ -265,10 +298,10 @@ const drawSmear = (l: Layer, c: P, r: number, a0: number, a1: number): void => {
       while (a > lo + 360) a -= 360;
       if (a > hi) continue;
       const t = (a - a0) / (a1 - a0);
-      const th = 1 + t * 5;
+      const th = 0.6 + Math.pow(t, 1.6) * 6.5;
       const k = r - d;
       if (k < -0.5 || k > th) continue;
-      l.set(x, y, k < 0.6 ? "W" : k < 2 ? "M" : "L");
+      l.set(x, y, k < 0.9 || th < 2 ? "W" : k < th * 0.65 ? "L" : "B");
     }
 };
 
@@ -276,17 +309,19 @@ const build = (p: Pose): { grid: Grid; tip: P } => {
   const bx = p.bx ?? 0;
   const by = p.by ?? 0;
   const lean = p.lean ?? 0;
+  const squash = p.squash ?? 0;
   const tx = 26 + bx;
   const ty = 35 + by;
+  const ty2 = ty + squash;
   const pivot = ty + 14;
   const sh = (q: P): P => [q[0] + Math.round(Math.max(0, pivot - q[1]) * lean), q[1]];
-  const nearSh = sh([tx + 4, ty + 4]);
-  const farSh = sh([tx + 16, ty + 3]);
-  const sw = drawSword(p.blade);
-  const nh = p.nearHand ?? 1;
+  const nearSh = sh([tx + 4, ty2 + 4]);
+  const farSh = sh([tx + 16, ty2 + 3]);
+  const sw = drawSword(p.blade, p.grip);
+  const [nearGrip, farGrip] = sw.hands;
 
   const out = new Layer();
-  const cape = new Layer().stamp(p.cape ?? CAPE, tx - 6 + (p.capeAt?.[0] ?? 0), ty + 1 + (p.capeAt?.[1] ?? 0));
+  const cape = new Layer().stamp(p.cape ?? CAPE, tx - 6 + (p.capeAt?.[0] ?? 0), ty2 + 1 + (p.capeAt?.[1] ?? 0));
   out.over(shear(cape, pivot, lean).outline());
 
   if (p.smear) {
@@ -294,33 +329,36 @@ const build = (p: Pose): { grid: Grid; tip: P } => {
     drawSmear(sm, p.smear.c, p.smear.r, p.smear.a0, p.smear.a1);
     out.over(sm);
   }
+  if (p.swordBehind) out.over(sw.layer.outline());
 
+  const farHand = p.farFree ?? farGrip;
   const farArm = new Layer();
-  limb(farArm, [farSh, p.farElbow, sw.hands[1 - nh]], FAR);
-  farArm.stamp(GAUNT, sw.hands[1 - nh][0] - 1, sw.hands[1 - nh][1] - 1);
+  arm(farArm, farSh, p.farElbow, farHand, FAR, true);
   out.over(farArm.outline());
 
   const leg = (q: [P, P, P], dark: boolean): Layer => {
     const l = new Layer();
-    limb(l, [q[0], q[1]], dark ? ["m", "m", "k", "k", "k"] : ["W", "M", "M", "m", "k"]);
-    limb(l, [q[1], q[2]], dark ? ["m", "m", "k", "k"] : LEG);
-    l.set(q[1][0], q[1][1], dark ? "M" : "W");
+    limb(l, [q[0], q[1]], dark ? ["m", "M", "m", "k", "k"] : ["M", "W", "M", "m", "k"]);
+    limb(l, [q[1], q[2]], dark ? ["m", "M", "k", "k"] : LEG);
+    // poleyn (knee cop): a rounded plate with a crisp highlight
+    l.stamp(dark ? [".mk", "mMk", "kkk"] : [".MMm", "MWMk", "mMmk", ".kk."], q[1][0] - 1, q[1][1] - 1);
     l.stamp(FOOTG, q[2][0] - 1, q[2][1] + 1);
     return l.outline();
   };
   out.over(leg(p.farLeg, true)).over(leg(p.nearLeg, false));
 
+  const drop = SQUASH_ROWS.slice(0, squash);
   const skirt = new Layer().stamp(SKIRT, tx + 2, ty + 15);
-  const torso = shear(new Layer().stamp(TORSO, tx, ty), pivot, lean);
+  const torso = shear(new Layer().stamp(TORSO.filter((_, r) => !drop.includes(r)), tx, ty2), pivot, lean);
   out.over(skirt.over(torso).outline());
-  const hx = tx + 5 + (p.head?.[0] ?? 0) + Math.round(11 * lean);
-  out.over(new Layer().stamp(p.headGrid ?? HEAD, hx, ty - 11 + (p.head?.[1] ?? 0)).outline());
+  const hx = tx + 5 + (p.head?.[0] ?? 0) + Math.round((pivot - ty2) * lean);
+  const hy = ty2 - 11 + (p.head?.[1] ?? 0);
+  out.over(new Layer().stamp(p.headGrid ?? HEAD, hx, hy).outline());
 
-  out.over(sw.layer.outline());
+  if (!p.swordBehind) out.over(sw.layer.outline());
 
   const nearArm = new Layer();
-  limb(nearArm, [nearSh, p.nearElbow, sw.hands[nh]], ARM);
-  nearArm.stamp(GAUNT, sw.hands[nh][0] - 1, sw.hands[nh][1] - 1);
+  arm(nearArm, nearSh, p.nearElbow, nearGrip, ARM);
   nearArm.stamp(PAULDRON, nearSh[0] - 4, nearSh[1] - 3);
   out.over(nearArm.outline());
 
@@ -332,58 +370,81 @@ const build = (p: Pose): { grid: Grid; tip: P } => {
   return { grid: fit(out.grid(), W, H), tip: sw.tip };
 };
 
-/** Tucked somersault ball: cape wrapped round, head down, knees in, sword hugged along the body. */
+/** Torso rows dropped (in this order) when the chest folds forward. */
+const SQUASH_ROWS = [6, 9, 11, 8, 10];
+
+/** Rotates a grid 90 degrees clockwise (top goes right). */
+const rotCW = (g: Grid): Grid => {
+  const w = Math.max(...g.map((r) => r.length));
+  const rows = g.map((r) => r.padEnd(w, "."));
+  return Array.from({ length: w }, (_, y) => rows.map((_, x) => rows[rows.length - 1 - x][y]).join(""));
+};
+
+/**
+ * Tucked somersault ball: the cape wrapped round him with swirling folds, head tucked forward
+ * (crown leading), knees drawn to the chest, sword hugged flat under him. Centred low (near the
+ * foot anchor) so the game's spin around the anchor stays a tight roll rather than a wide orbit.
+ */
 const buildBall = (): { grid: Grid; tip: P } => {
-  const cx = 36;
-  const cy = 50;
-  const R = 11.5;
+  const cx = 35;
+  const cy = 61;
+  const R = 12.2;
   const out = new Layer();
   const cape = new Layer();
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
-      const dx = x - cx;
-      const dy = y - cy;
+      const dx = x - cx + 0.5;
+      const dy = y - cy + 0.5;
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d > R) continue;
-      const lit = (-dx - dy) / R;
-      let c = "N";
-      if (lit > 0.35) c = "D";
-      if (d > R - 2.2 && lit > 0.5) c = "B";
-      if (d > R - 1 && lit > 0.9) c = "L";
+      const lit = (-dx - dy) / (d || 1);
+      let c = "D";
+      if (lit < -0.35 || d < 3) c = "N";
+      if (lit > 0.3 && d > R - 4) c = "B";
+      if (lit > 0.75 && d > R - 1.6) c = "L";
+      // swept folds: two shade arcs following the roll, and a rim light on the shadow side
+      const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+      if (Math.abs(d - (R - 4)) < 0.6 && ang > -200 + 360 * 0 && ang < -95 && ang > -180) c = "D";
+      if (Math.abs(d - (R - 4)) < 0.6 && ang > 150) c = "D";
+      if (Math.abs(d - (R - 2.6)) < 0.5 && ang > 20 && ang < 80) c = "B";
       cape.set(x, y, c);
     }
   out.over(cape.outline());
-  const sw = drawSword({ g: [cx - 2, cy + 6], u: [-1, -1], len: 14 });
+  // head tucked: rotated so the crown leads and the face looks down at the knees
+  const head = rotCW(HEAD.map((r) => r.padEnd(12, ".")));
+  out.over(new Layer().stamp(head, cx - 1, cy - 12).outline());
+  // tucked knee drawn up under the chin, shin folded back beneath
   const legs = new Layer();
-  limb(legs, [[cx + 1, cy + 6], [cx + 8, cy + 3]], ["W", "M", "M", "m", "k"]);
-  limb(legs, [[cx + 8, cy + 3], [cx + 3, cy + 9]], LEG);
-  legs.set(cx + 8, cy + 3, "W");
+  limb(legs, [[cx - 2, cy + 3], [cx + 6, cy + 3]], ["W", "M", "m", "k"]);
+  limb(legs, [[cx + 6, cy + 4], [cx + 3, cy + 7]], ["M", "m", "k"]);
+  legs.stamp(["Mk", "kk"], cx + 6, cy + 2);
+  legs.set(cx + 6, cy + 2, "W");
   out.over(legs.outline());
-  const head = new Layer().stamp(rot(HEAD), cx + 1, cy - 11);
-  out.over(head.outline());
+  // the greatsword juts out of the roll, so the spin reads as a whirling blade
+  const sw = drawSword({ g: [cx - 6, cy + 7], u: [-1, 0.5], len: 11 }, [-1, -3]);
   out.over(sw.layer.outline());
-  const arm = new Layer();
-  limb(arm, [[cx - 2, cy - 3], [cx - 3, cy + 3], sw.hands[0]], ARM);
-  arm.stamp(GAUNT, sw.hands[0][0] - 1, sw.hands[0][1] - 1);
-  out.over(arm.outline());
+  const am = new Layer();
+  am.stamp(PAULDRON, cx - 8, cy - 6);
+  am.stamp(GAUNT, cx - 3, cy + 4);
+  am.set(cx - 2, cy + 3, "y");
+  am.set(cx - 1, cy + 3, "y");
+  am.set(cx, cy + 3, "g");
+  out.over(am.outline());
   return { grid: fit(out.grid(), W, H), tip: sw.tip };
 };
 
-/** Rotates a grid 90 degrees clockwise. */
-const rot = (g: Grid): Grid => g[0].split("").map((_, x) => g.map((r) => r[x]).reverse().join(""));
-
 const CAPE_FLOW: Grid = [
-  "...............NNNN",
-  "...........NNNNDDNN",
-  ".......NNNNDDDDDDNN",
-  "....NNNDDDDDNNNDDNN",
-  "..NNDDDDNNNNDDDDNNN",
-  ".NDDDNNNDDDDDDNNNNN",
-  "NDDNNDDDDNNNNDDNNN.",
-  "NDNNDDNNNNNDDDNNN..",
-  ".NNDDNNNNDDNNNNN...",
-  "..NNNNNNNNNNNN.....",
-  "...NNN..NNNN.......",
+  "...............NNNN.",
+  "...........NNNNDDDN.",
+  "........NNNDDDDDDDN.",
+  ".....NNNDDDDDDBBBDN.",
+  "...NNDDDDDBBBBDDDDN.",
+  ".NNDDDBBBBDDDDNNNNN.",
+  "NDDBBBDDDDNNNNNDDNN.",
+  "NDBDDDNNNNNDDDDDNN..",
+  ".NDDNNNDDDDDNNNN....",
+  ".NNNNDDDNNNN........",
+  "..NN.NNNN...........",
 ];
 
 const HEAD_HIT: Grid = HEAD.map((r, y) => (y === 6 ? r.replace("o", "H") : r));
@@ -391,146 +452,127 @@ const HEAD_HIT: Grid = HEAD.map((r, y) => (y === 6 ? r.replace("o", "H") : r));
 const IDLE: Pose = {
   nearLeg: [[31, 52], [29, 62], [28, 70]],
   farLeg: [[39, 52], [42, 62], [43, 70]],
-  nearElbow: [31, 47],
-  farElbow: [45, 45],
-  blade: { g: [46, 42], u: [1, -1] },
+  nearElbow: [31, 50],
+  farElbow: [44, 45],
+  blade: { g: [44, 44], u: [1, -1] },
 };
 
 const bump = (q: P, dx: number, dy: number): P => [q[0] + dx, q[1] + dy];
 
+const WALK = (by: number, nearLeg: [P, P, P], farLeg: [P, P, P]): Pose => ({
+  by,
+  lean: 0.25,
+  cape: CAPE_FLOW,
+  capeAt: [-8, 0],
+  nearLeg,
+  farLeg,
+  nearElbow: [33, 50 + by],
+  farElbow: [46, 45 + by],
+  blade: { g: [47, 44 + by], u: [1, -1] },
+});
+
 const poses: Record<FrameId, Pose> = {
   idle0: IDLE,
   idle1: { ...IDLE, by: 1, nearElbow: bump(IDLE.nearElbow, 0, 1), farElbow: bump(IDLE.farElbow, 0, 1), blade: { ...IDLE.blade, g: bump(IDLE.blade.g, 0, 1) } },
-  walk0: {
-    lean: 0.15,
-    cape: CAPE_FLOW,
-    capeAt: [-8, 0],
-    nearLeg: [[32, 52], [38, 60], [40, 69]],
-    farLeg: [[38, 52], [33, 61], [27, 66]],
-    nearElbow: [33, 47],
-    farElbow: [46, 45],
-    blade: { g: [48, 43], u: [1, -1] },
-  },
-  walk1: {
-    by: 1,
-    lean: 0.15,
-    cape: CAPE_FLOW,
-    capeAt: [-8, 1],
-    nearLeg: [[32, 53], [35, 62], [33, 70]],
-    farLeg: [[38, 53], [36, 61], [29, 63]],
-    nearElbow: [33, 48],
-    farElbow: [46, 46],
-    blade: { g: [48, 44], u: [1, -1] },
-  },
-  walk2: {
-    lean: 0.15,
-    cape: CAPE_FLOW,
-    capeAt: [-8, 0],
-    nearLeg: [[32, 52], [29, 61], [23, 66]],
-    farLeg: [[38, 52], [43, 60], [45, 69]],
-    nearElbow: [33, 47],
-    farElbow: [46, 45],
-    blade: { g: [48, 43], u: [1, -1] },
-  },
-  walk3: {
-    by: 1,
-    lean: 0.15,
-    cape: CAPE_FLOW,
-    capeAt: [-8, 1],
-    nearLeg: [[32, 53], [33, 61], [27, 64]],
-    farLeg: [[38, 53], [41, 62], [39, 70]],
-    nearElbow: [33, 48],
-    farElbow: [46, 46],
-    blade: { g: [48, 44], u: [1, -1] },
-  },
+  walk0: WALK(0, [[32, 52], [38, 60], [40, 69]], [[38, 52], [33, 61], [27, 66]]),
+  walk1: WALK(1, [[32, 53], [35, 62], [33, 70]], [[38, 53], [36, 61], [29, 63]]),
+  walk2: WALK(0, [[32, 52], [29, 61], [23, 66]], [[38, 52], [43, 60], [45, 69]]),
+  walk3: WALK(1, [[32, 53], [33, 61], [27, 64]], [[38, 53], [41, 62], [39, 70]]),
   guard: {
     by: 2,
-    lean: -0.1,
     nearLeg: [[31, 54], [27, 63], [26, 70]],
     farLeg: [[39, 54], [44, 62], [45, 70]],
-    nearElbow: [33, 47],
-    farElbow: [45, 44],
-    blade: { g: [43, 35], u: [0.5, -1] },
-    nearHand: 1,
+    nearElbow: [33, 48],
+    farElbow: [45, 45],
+    blade: { g: [43, 36], u: [0.5, -1] },
   },
   windup: {
-    lean: -0.15,
-    head: [-1, 0],
+    lean: -0.25,
+    head: [0, 0],
     cape: CAPE_FLOW,
-    capeAt: [-6, 2],
+    capeAt: [-7, 3],
+    swordBehind: true,
     nearLeg: [[31, 52], [28, 62], [26, 70]],
     farLeg: [[39, 52], [44, 61], [46, 70]],
-    nearElbow: [26, 32],
-    farElbow: [38, 31],
-    blade: { g: [28, 22], u: [-1, 0.5] },
-    nearHand: 1,
+    nearElbow: [25, 31],
+    farElbow: [39, 28],
+    blade: { g: [26, 19], u: [-1, -0.5], len: 19 },
+    grip: [-2, -5],
   },
   attack0: {
     by: 2,
-    lean: 0.25,
+    lean: 0.5,
+    squash: 2,
     cape: CAPE_FLOW,
-    capeAt: [-8, 0],
+    capeAt: [-9, -2],
     nearLeg: [[31, 54], [26, 62], [22, 70]],
     farLeg: [[39, 54], [46, 60], [48, 70]],
-    nearElbow: [38, 44],
-    farElbow: [49, 42],
-    blade: { g: [54, 36], u: [1, -0.5] },
-    smear: { c: [42, 40], r: 22, a0: -170, a1: -30 },
+    nearElbow: [40, 46],
+    farElbow: [51, 44],
+    blade: { g: [54, 39], u: [1, -0.5], len: 17 },
+    smear: { c: [45, 42], r: 23, a0: -175, a1: -25 },
   },
   attack1: {
     by: 5,
-    lean: 0.4,
+    lean: 1,
+    squash: 4,
     cape: CAPE_FLOW,
-    capeAt: [-6, 2],
+    capeAt: [-4, -3],
     nearLeg: [[31, 57], [25, 64], [20, 70]],
-    farLeg: [[39, 57], [47, 62], [48, 70]],
-    nearElbow: [42, 50],
-    farElbow: [51, 48],
-    blade: { g: [52, 57], u: [0.5, 1], len: 15 },
-    nearHand: 1,
+    farLeg: [[39, 57], [47, 62], [49, 70]],
+    nearElbow: [40, 58],
+    farElbow: [53, 51],
+    blade: { g: [51, 58], u: [0.5, 1], len: 15 },
   },
   hit: {
     by: 1,
-    lean: -0.3,
+    lean: -0.25,
     bx: -2,
-    head: [-2, 1],
+    head: [-1, 1],
     headGrid: HEAD_HIT,
     nearLeg: [[29, 53], [26, 62], [25, 70]],
     farLeg: [[37, 53], [42, 60], [44, 67]],
-    nearElbow: [27, 46],
-    farElbow: [40, 46],
-    blade: { g: [40, 55], u: [1, 0.5] },
+    nearElbow: [27, 47],
+    farElbow: [40, 47],
+    blade: { g: [42, 55], u: [1, 0.5] },
   },
   crouch: {
     by: 7,
-    lean: 0.35,
-    nearLeg: [[31, 59], [24, 64], [26, 70]],
-    farLeg: [[39, 59], [46, 62], [44, 70]],
-    nearElbow: [37, 53],
-    farElbow: [46, 52],
-    blade: { g: [36, 60], u: [-1, 0.5] },
+    lean: 0.5,
+    squash: 3,
+    cape: CAPE_FLOW,
+    capeAt: [-7, 6],
+    swordBehind: true,
+    nearLeg: [[31, 59], [26, 65], [21, 70]],
+    farLeg: [[39, 59], [47, 61], [46, 70]],
+    nearElbow: [39, 53],
+    farElbow: [49, 52],
+    blade: { g: [41, 55], u: [-1, -0.5], len: 19 },
+    grip: [-5, -2],
   },
   air: {
     by: -2,
-    lean: 0.1,
+    lean: 0.25,
     cape: CAPE_FLOW,
-    capeAt: [-6, -3],
+    capeAt: [-7, -3],
+    swordBehind: true,
     nearLeg: [[31, 50], [38, 55], [32, 62]],
     farLeg: [[38, 50], [44, 54], [40, 61]],
-    nearElbow: [28, 30],
-    farElbow: [38, 29],
-    blade: { g: [33, 20], u: [-1, -0.5] },
-    nearHand: 1,
+    nearElbow: [24, 31],
+    farElbow: [36, 27],
+    blade: { g: [24, 21], u: [-1, -0.25], len: 18 },
+    grip: [-2, -5],
   },
   victory0: {
     cape: CAPE_FLOW,
     capeAt: [-7, 0],
     nearLeg: [[31, 52], [28, 62], [26, 70]],
     farLeg: [[39, 52], [43, 62], [45, 70]],
-    nearElbow: [32, 30],
-    farElbow: [44, 31],
-    blade: { g: [42, 20], u: [0.5, -1], len: 17 },
-    nearHand: 1,
+    nearElbow: [29, 32],
+    farElbow: [46, 44],
+    farFree: [41, 50],
+    blade: { g: [30, 22], u: [0, -1], len: 18 },
+    grip: [-3, -6],
   },
   victory1: {} as Pose,
   special: {} as Pose,
