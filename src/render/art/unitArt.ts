@@ -2,6 +2,11 @@ import Phaser from "phaser";
 import type { PlayerId, UnitType } from "../../engine/types";
 import { paint } from "./canvas";
 import { LEGION } from "./legionArt";
+import { UNDEAD } from "./styles/undeadArt";
+import { CLOCKWORK } from "./styles/clockworkArt";
+import { ORIGAMI } from "./styles/origamiArt";
+import { PIXEL } from "./styles/pixelArt";
+import { BEASTS } from "./styles/beastsArt";
 
 export const UNIT_W = 64;
 export const UNIT_H = 100;
@@ -16,7 +21,21 @@ export interface Faction {
   css: string;
 }
 
-export type PieceStyle = "legion" | "classic" | "crystal" | "glyph";
+export type PieceStyle = "legion" | "classic" | "crystal" | "glyph" | "undead" | "clockwork" | "origami" | "pixel" | "beasts";
+
+export const STYLE_ORDER: PieceStyle[] = ["legion", "classic", "crystal", "glyph", "undead", "clockwork", "origami", "pixel", "beasts"];
+
+export const STYLE_LABELS: Record<PieceStyle, string> = {
+  legion: "Figurines",
+  classic: "Chessmen",
+  crystal: "Crystal",
+  glyph: "Bold glyphs",
+  undead: "Bone Legion",
+  clockwork: "Clockwork",
+  origami: "Origami",
+  pixel: "8-bit",
+  beasts: "Beasts",
+};
 export type PaletteId = "royal" | "ivory" | "verdant";
 
 export const PALETTES: Record<PaletteId, Record<PlayerId, Faction>> = {
@@ -284,6 +303,11 @@ const STYLES: Record<PieceStyle, (type: UnitType, f: Faction) => (g: CanvasRende
     drawUnit(type, f)(g);
     glassify(g, f);
   },
+  undead: (type, f) => (g) => UNDEAD[type](g, f),
+  clockwork: (type, f) => (g) => CLOCKWORK[type](g, f),
+  origami: (type, f) => (g) => ORIGAMI[type](g, f),
+  pixel: (type, f) => (g) => PIXEL[type](g, f),
+  beasts: (type, f) => (g) => BEASTS[type](g, f),
 };
 
 export const unitKey = (type: UnitType, owner: PlayerId): string => `unit-${theme.style}-${theme.palette}-${type}-${owner}`;

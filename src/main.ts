@@ -5,7 +5,7 @@ import { Chessmen } from "./ui/Chessmen";
 import { BattleScene } from "./render/scenes/BattleScene";
 import { Match, type MatchOptions } from "./game/Match";
 import { Hud } from "./ui/Hud";
-import { applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
+import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
 import { getRotation, setRotation } from "./render/iso";
 import { sfx } from "./audio/sfx";
 import type { Difficulty } from "./engine/ai";
@@ -26,8 +26,6 @@ const readOptions = (form: HTMLFormElement): MatchOptions => {
     fog: data.get("fog") === "on",
   };
 };
-
-const STYLE_ORDER: PieceStyle[] = ["legion", "classic", "crystal", "glyph"];
 
 const saveTheme = (): void => {
   try {

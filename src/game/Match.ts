@@ -19,6 +19,8 @@ export interface MatchOptions {
   ordersPerTurn: number;
   mode: GameMode;
   fog: boolean;
+  /** Chi only: the id of a battlefield preset from engine/presets. */
+  preset?: string;
 }
 
 export type DeployTool = "units" | Terrain;

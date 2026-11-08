@@ -69,6 +69,10 @@ class Sfx {
     this.tone({ freq: 660, to: 990, dur: 0.08, wave: "triangle", gain: 0.25 });
   }
 
+  hover(): void {
+    this.tone({ freq: 880, to: 940, dur: 0.035, wave: "sine", gain: 0.08 });
+  }
+
   deselect(): void {
     this.tone({ freq: 500, to: 330, dur: 0.08, wave: "triangle", gain: 0.18 });
   }
