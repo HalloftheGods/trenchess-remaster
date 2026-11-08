@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { UNIT_LORE } from "../../game/lore";
 import type { DuelMode } from "./duel";
-import { ABILITIES, moveTo, pose, type Ctx } from "./duelAbilities";
+import { ABILITIES, moveTo, type Ctx } from "./duelAbilities";
 import { duelSound } from "./duelSound";
 import { factionTint, type DuelStage } from "./DuelStage";
 
@@ -10,47 +10,44 @@ const TEMPO: Record<DuelMode, number> = { off: 0, fast: 0.6, full: 1 };
 
 export const tempoOf = (mode: DuelMode): number => TEMPO[mode];
 
-const lerp = (a: number, b: number, p: number): number => a + (b - a) * p;
-
 /** A plain scene tween as a promise: for the curtain, which must play even after a skip. */
 const animate = (scene: Phaser.Scene, ms: number, fn: (p: number) => void, ease = "Cubic.Out"): Promise<void> =>
   new Promise((resolve) => {
     scene.tweens.addCounter({ from: 0, to: 1, duration: ms, ease, onUpdate: (t) => fn(t.getValue() ?? 0), onComplete: () => resolve() });
   });
 
-/** The letterbox closes over the board, opens on the arena, and both chessmen take the field. */
+/** The curtain closes over the board, opens on the arena, and both chessmen take the field. */
 const entrance = async (c: Ctx): Promise<void> => {
   const { s, r } = c;
   const full = r.full;
-  s.world.setAlpha(0);
   duelSound.open();
-  await r.counter(full ? 200 : 110, (p) => s.hud.setBars(p, p), "Quad.In");
-  s.world.setAlpha(1);
-  const open = s.hud.open;
+  await r.counter(full ? 220 : 120, (p) => s.curtain(p), "Quad.In");
+  s.curtain(1);
+  s.reveal(true);
   if (full) {
     s.hud.caption(s.req.terrain, 1400);
-    const off = s.w * 0.34;
-    s.a.root.x = s.aHome - s.dir * off;
-    s.d.root.x = s.dHome + s.dir * off;
-    [s.a, s.d].forEach((rig) => {
-      rig.j.run = rig.kit.mount ? 0 : 1;
-      rig.j.gait = rig.kit.mount ? 1 : 0;
-      moveTo(c, rig, rig === s.a ? s.aHome : s.dHome, 560, "Quad.Out");
+    const off = Math.round(s.w * 0.36);
+    s.a.x = s.aHome - s.dir * off;
+    s.d.x = s.dHome + s.dir * off;
+    [s.a, s.d].forEach((sp) => {
+      sp.run(sp.mounted ? 14 : 10);
+      moveTo(c, sp, sp === s.a ? s.aHome : s.dHome, 620, "Quad.Out");
     });
-    s.cam.setZoom(1.14);
-    r.tween({ targets: s.cam, zoom: 1, duration: 900, ease: "Sine.Out" });
-    s.backdrop.push(-s.dir * 30 * s.k);
+    s.backdrop.push(-s.dir * 24);
+    if (s.a.mounted || s.d.mounted) duelSound.gallop(6, 600);
   }
   s.hud.showPlates(full ? 320 : 160);
-  await r.counter(full ? 360 : 180, (p) => s.hud.setBars(lerp(1, open.top, p), lerp(1, open.bot, p)), "Cubic.Out");
+  await r.counter(full ? 360 : 180, (p) => s.curtain(1 - p), "Cubic.Out");
+  s.curtain(0);
   if (full) {
-    await r.wait(260);
-    [s.a, s.d].forEach((rig) => pose(c, rig, "idle", 220, "Quad.Out"));
+    await r.wait(300);
+    s.a.idle();
+    s.d.idle();
     await r.wait(260);
   }
 };
 
-/** The defender flashes, breaks apart into its painted pieces and scatters as shards. */
+/** The defender flashes white, then breaks down pixel by pixel and scatters as fragments. */
 const fall = async (c: Ctx): Promise<void> => {
   const { s, r } = c;
   const d = s.d;
@@ -58,22 +55,23 @@ const fall = async (c: Ctx): Promise<void> => {
   if (king) r.slow(0.35);
   await r.wait(80);
   d.flash(0xffffff);
-  await r.wait(50);
+  await r.wait(60);
   d.flash(null);
   const p = d.chest();
   duelSound.shatter(king);
-  d.shatter(king ? 1.4 : 1.1, king ? 1100 : 850);
-  s.fx.shardsAt(p.x, p.y, factionTint(d.unit), king ? 60 : 36);
-  s.fx.shardsAt(p.x, p.y, 0xffffff, king ? 24 : 12);
-  s.fx.dustAt(d.root.x, s.floor, 0xd8d0c0, 10);
-  s.fx.star(p.x, p.y, factionTint(d.unit), king ? 260 : 150, 480);
+  d.dissolve(king ? 900 : 640);
+  s.fx.chunksAt(p.x, p.y, factionTint(d.unit), king ? 40 : 24);
+  s.fx.chunksAt(p.x, p.y - 8, 0xffffff, king ? 16 : 8);
+  s.fx.bitsAt(p.x, p.y, [0xffffff, factionTint(d.unit)], king ? 40 : 22);
+  s.fx.dust(d.x, king);
+  s.fx.play("glint", p.x, p.y, { fps: 16 });
   s.hud.fallen(s.dSide);
   if (king) {
-    s.hud.flash(0xffffff, 0.75, 700);
+    s.hud.flash(0xffffff, 0.8, 700);
     s.shake(600, 1);
-    s.fx.ring(p.x, p.y, 0xffe08a, 300, false);
+    s.fx.play("ring", p.x, p.y, { fps: 14, tint: 0xffe08a });
   }
-  await r.wait(king ? 520 : 380);
+  await r.wait(king ? 620 : 460);
   r.normal();
 };
 
@@ -88,29 +86,33 @@ const outcomeText = (s: DuelStage): [string, string] => {
 const triumph = async (c: Ctx): Promise<void> => {
   const { s, r } = c;
   const a = s.a;
-  const away = s.aHome - a.root.x;
-  if (Math.abs(away) > 6 * s.k) {
+  a.flash(null);
+  a.air = 0;
+  a.img.setRotation(0);
+  const away = s.aHome - a.x;
+  if (Math.abs(away) > 6) {
     const back = Math.sign(away) !== s.dir;
-    if (back) r.tween({ targets: a.j, face: -s.dir, duration: 140, ease: "Sine.InOut" });
-    pose(c, a, "idle", 160, "Quad.Out", a.kit.mount ? { gait: 1 } : { run: 1 });
-    const ms = Phaser.Math.Clamp(Math.abs(away) / s.k * 3.4, 260, 620);
+    if (back) a.face = (-s.dir) as 1 | -1;
+    a.run(a.mounted ? 12 : 9);
+    const ms = Phaser.Math.Clamp(Math.abs(away) * 4.5, 260, 640);
     moveTo(c, a, s.aHome, ms, "Sine.InOut");
-    await r.wait(ms - 120);
-    if (back) r.tween({ targets: a.j, face: s.dir, duration: 140, ease: "Sine.InOut" });
-    await r.wait(120);
+    await r.wait(ms);
+    a.face = s.dir;
   }
-  pose(c, a, "victory", 260, "Back.Out");
+  a.set("victory0");
+  await r.wait(160);
+  a.set("victory1");
   duelSound.fanfare(r.full);
-  await r.wait(220);
+  await r.wait(160);
   const tip = a.tip();
-  s.fx.star(tip.x, tip.y, 0xffffff, 70, 500);
+  s.fx.play("glint", tip.x, tip.y, { fps: 16 });
   duelSound.glint();
   if (r.full) {
     const [title, sub] = outcomeText(s);
     s.hud.outcome(title, sub);
     s.outcomeShown = true;
   }
-  await r.wait(r.full ? 1000 : 260);
+  await r.wait(r.full ? 1000 : 280);
 };
 
 /** The final picture of a duel after a skip: the victor alone. */
@@ -118,21 +120,23 @@ export const showResult = (s: DuelStage): void => {
   s.setSpeed(1);
   s.stopTrails();
   s.fx.clear();
-  s.cam.resetFX();
-  s.cam.setZoom(1);
-  s.scene.tweens.killTweensOf(s.cam);
-  s.world.setAlpha(1);
-  const open = s.hud.open;
-  s.hud.setBars(open.top, open.bot);
+  s.curtain(0);
+  s.reveal(true);
   s.hud.platesNow();
   s.hud.clearTransient();
   s.hud.hpNow(s.dSide, 0);
-  s.scene.tweens.killTweensOf([s.a.root, s.a.j]);
-  s.a.root.setX(s.aHome).setAlpha(1);
-  Object.assign(s.a.j, s.a.pose("idle"), s.a.pose("victory"), { face: s.dir });
-  s.a.flash(null);
-  s.a.tick(0);
-  s.d.root.setVisible(false);
+  s.hud.fallen(s.dSide);
+  s.scene.tweens.killTweensOf([s.a, s.d]);
+  const a = s.a;
+  a.x = s.aHome;
+  a.air = 0;
+  a.dx = 0;
+  a.face = s.dir;
+  a.img.setRotation(0).setAlpha(1);
+  a.flash(null);
+  a.set("victory1");
+  a.sync();
+  s.d.hide();
   if (!s.outcomeShown) {
     const [title, sub] = outcomeText(s);
     s.hud.outcome(title, sub, true);
@@ -140,14 +144,14 @@ export const showResult = (s: DuelStage): void => {
   }
 };
 
-/** Bars close over the arena, the arena goes, and the bars draw back to show the board. */
+/** The curtain closes over the arena, the arena goes, and it draws back to show the board. */
 const curtain = async (s: DuelStage, ms: number): Promise<void> => {
   duelSound.close();
-  const from = s.hud.barState;
-  await animate(s.scene, ms * 0.45, (p) => s.hud.setBars(lerp(from.top, 1, p), lerp(from.bot, 1, p)), "Quad.In");
-  s.world.setAlpha(0);
-  s.hud.barsOnly();
-  await animate(s.scene, ms * 0.55, (p) => s.hud.setBars(1 - p, 1 - p), "Quad.Out");
+  await animate(s.scene, ms * 0.45, (p) => s.curtain(p), "Quad.In");
+  s.curtain(1);
+  s.reveal(false);
+  await animate(s.scene, ms * 0.55, (p) => s.curtain(1 - p), "Quad.Out");
+  s.curtain(0);
 };
 
 /** Plays the whole duel on `stage` and resolves once the board is back in view. */
@@ -161,7 +165,7 @@ export const playDuel = async (c: Ctx): Promise<void> => {
   await triumph(c);
   if (r.isSkipped) {
     showResult(s);
-    await new Promise<void>((resolve) => s.scene.time.delayedCall(260, resolve));
+    await new Promise<void>((resolve) => s.scene.time.delayedCall(320, resolve));
   }
   const ms = r.full ? 420 : 280;
   await curtain(s, r.isSkipped ? 260 : ms);
