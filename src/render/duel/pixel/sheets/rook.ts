@@ -321,14 +321,22 @@ const drawShield = (cv: Canvas, p: Pose): void => {
         else ch = "M";
         if (!inside(x, y - 1) && dx <= 2) ch = "W";
       } else if (y < y0) {
-        ch = dx <= 2 ? "M" : dx <= 6 ? "m" : "k"; // merlon faces
+        // merlon faces
+        if (dx <= 2) ch = "M";
+        else if (dx <= 6) ch = "m";
+        else ch = "k";
       } else {
         // army face, gently convex across its width
         const nx = (dx - 5.5) / 6.5;
         let v = light(nx, -0.1, Math.sqrt(1 - nx * nx));
         if (y === y0 + 1) v -= 0.3; // under the crown rim
         ch = pick(ARMY, v - 0.08);
-        if (y === y0) ch = dx <= 3 ? "M" : dx <= 8 ? "m" : "k"; // crown band
+        if (y === y0) {
+          // crown band
+          if (dx <= 3) ch = "M";
+          else if (dx <= 8) ch = "m";
+          else ch = "k";
+        }
         if (y === y0 + 1) ch = "k";
       }
       px.set(y * W + x, ch);
@@ -443,7 +451,11 @@ const drawHammer = (cv: Canvas, p: Pose): void => {
           edgeLit += n[0] * LX + n[1] * LY;
         }
       }
-      if (isEdge) return edgeLit > 0.25 ? "W" : edgeLit < -0.25 ? "k" : "m";
+      if (isEdge) {
+        if (edgeLit > 0.25) return "W";
+        if (edgeLit < -0.25) return "k";
+        return "m";
+      }
       // grooves before the striking plates
       if (Math.abs(Math.abs(v) - (hv - 2)) < 0.5) return "k";
       // flat front face: lit half M, shaded half m

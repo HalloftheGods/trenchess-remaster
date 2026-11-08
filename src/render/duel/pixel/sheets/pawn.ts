@@ -295,7 +295,12 @@ const drawLeg = (cv: Canvas, hip: P, knee: P, ankle: P, foot: number, bias: numb
     tone: (x, y, ch) => {
       const v = sub(ankle, knee);
       const t = ((x + 0.5 - knee[0]) * v[0] + (y + 0.5 - knee[1]) * v[1]) / (len(v) ** 2 || 1);
-      if (t < 0.25) return ch === "w" ? "c" : ch === "r" ? "C" : "q"; // hose down to the boot
+      if (t < 0.25) {
+        // hose down to the boot
+        if (ch === "w") return "c";
+        if (ch === "r") return "C";
+        return "q";
+      }
       if (t < 0.38) return ch === "H" ? "r" : "w"; // turned-down cuff, one band
       return undefined;
     },
@@ -381,7 +386,10 @@ const drawSpear = (cv: Canvas, p: Pose): void => {
       if (!onShaft.has((y + dy) * W + x + dx)) cv.set(x + dx, y + dy, "o");
   pts.forEach(([x, y], i) => {
     const u = (i / Math.max(1, pts.length - 1)) * (SPEAR - HEAD_LEN);
-    cv.set(x, y, u < 1.6 ? "k" : u < 6 ? "r" : "w");
+    let shaftCh = "w";
+    if (u < 1.6) shaftCh = "k";
+    else if (u < 6) shaftCh = "r";
+    cv.set(x, y, shaftCh);
   });
   // leaf-shaped head: widest a third of the way up, ridge down the middle
   const u0 = SPEAR - HEAD_LEN;
@@ -528,7 +536,11 @@ const render = (p0: Pose): Grid => {
       // quilting: a stitched line down the front and two across
       if (ly > -1.8 && ly < -0.4) return "belt";
       if (ly > 0 && Math.abs(lx - 1.3) < 0.5) return ch === "L" ? "B" : "D";
-      if (ly < -2 && ly > -7.5 && Math.abs(lx - 2.0) < 0.5) return ch === "L" ? "B" : ch === "B" ? "D" : ch;
+      if (ly < -2 && ly > -7.5 && Math.abs(lx - 2.0) < 0.5) {
+        if (ch === "L") return "B";
+        if (ch === "B") return "D";
+        return ch;
+      }
       return undefined;
     },
   });
@@ -538,7 +550,11 @@ const render = (p0: Pose): Grid => {
     const x = i % W;
     const y = (i - x) / W;
     const [lx] = toLocal(p, x + 0.5, y + 0.5);
-    cv.px[i] = Math.abs(lx - 1.6) < 1 ? "Y" : lx < -1.5 ? "y" : lx > 3 ? "g" : "y";
+    let beltCh = "y";
+    if (Math.abs(lx - 1.6) < 1) beltCh = "Y";
+    else if (lx < -1.5) beltCh = "y";
+    else if (lx > 3) beltCh = "g";
+    cv.px[i] = beltCh;
   }
   // collar
   paint(cv, ellipse(T(p, [1.4, -8.9]), 2.2, 1.0), { ramp: { ramp: ["X", "x"], cuts: [0.1] }, keep: true });

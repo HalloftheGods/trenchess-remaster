@@ -100,7 +100,9 @@ const clumps = (blobs: Blob[], chars: { hi: string; mid: string; lo: string; edg
       const below = j + 1 < h ? owner[j + 1][i] : -1;
       const seam = below >= 0 && below !== k && blobs[below].y > b.y;
       if (seam) row += chars.lo;
-      else row += d < 0.78 ? chars.hi : d < 1.2 ? chars.mid : chars.lo;
+      else if (d < 0.78) row += chars.hi;
+      else if (d < 1.2) row += chars.mid;
+      else row += chars.lo;
     }
     out.push(row);
   }
@@ -379,7 +381,10 @@ const paintGround = (p: PixelPainter): void => {
   const tuftPal = (y: number): Palette => {
     const i = [118, 123, 130, 148, 164, 999].findIndex((s) => y < s);
     const deep = [...GROUND, "#447c2c", "#3a6c26", "#335f22"];
-    return { l: i <= 1 ? "#b4dc74" : i <= 3 ? "#a0d066" : "#8cc25a", d: deep[i + 2] };
+    let l = "#8cc25a";
+    if (i <= 1) l = "#b4dc74";
+    else if (i <= 3) l = "#a0d066";
+    return { l, d: deep[i + 2] };
   };
   const onTrack = (x: number, y: number, w: number): boolean => {
     for (let i = -1; i <= w; i++) if (y >= trackTop(x + i) - 2 && y <= trackBot(x + i) + 3) return true;
@@ -389,7 +394,10 @@ const paintGround = (p: PixelPainter): void => {
   for (let k = 0; k < 120; k++) {
     const y = 118 + Math.floor(Math.pow(p.rand(), 0.8) * 60);
     const x = Math.floor(p.rand() * TILE_W);
-    const g = y < 124 ? TUFT_S : y < 136 ? TUFT_M : y < 156 ? TUFT_L : TUFT_XL;
+    let g = TUFT_XL;
+    if (y < 124) g = TUFT_S;
+    else if (y < 136) g = TUFT_M;
+    else if (y < 156) g = TUFT_L;
     if (onTrack(x, y, g[0].length)) continue;
     plant(p, g, x, y, tuftPal(y));
   }
@@ -433,7 +441,9 @@ const paintFront = (p: PixelPainter): void => {
   for (const x of [4, 58, 132, 206, 270]) p.stamp(FRONT_TUFT, x, p.h - FRONT_TUFT.length, pal);
   // ragged blade line along the very bottom edge
   for (let x = 0; x < TILE_W; x++) {
-    const h = 2 + ((x * 7) % 5 === 0 ? 2 : (x * 3) % 4 === 0 ? 1 : 0);
+    let h = 2;
+    if ((x * 7) % 5 === 0) h += 2;
+    else if ((x * 3) % 4 === 0) h += 1;
     p.vline(x, p.h - h, h, "#2c5626");
   }
 };

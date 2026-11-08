@@ -74,7 +74,9 @@ const fillNotches = (g: Grid): Grid =>
         if (ch !== ".") return ch;
         const n = [g[y][x - 1], g[y][x + 1], g[y - 1]?.[x], g[y + 1]?.[x]].filter((c) => c && c !== ".");
         // only solid body edges: a gap among grey pixels is deliberate dither
-        return n.length >= 3 && !n.includes("D") ? (n.includes("L") ? "L" : n[0]) : ch;
+        if (n.length < 3 || n.includes("D")) return ch;
+        if (n.includes("L")) return "L";
+        return n[0];
       })
       .join(""),
   );
@@ -229,7 +231,7 @@ const slashFrame = (k: SlashSpec): Grid => {
     if (a < k.from || a > k.to) return "";
     const t = (a - k.from) / (k.to - k.from); // 0 old end .. 1 fresh end
     const thick = dOut + dIn;
-    let tone = dOut < 1 ? 0 : dOut < 2 && thick > 4.5 ? 0 : 1;
+    let tone = dOut < 1 || (dOut < 2 && thick > 4.5) ? 0 : 1;
     // the old end cools: whites become light, then the tail dithers out
     if (t < 0.4) tone = Math.max(tone, 1);
     if (t < 0.2) tone = 2;
@@ -241,7 +243,8 @@ const slashFrame = (k: SlashSpec): Grid => {
       if (tone >= 2) return "";
       if (t < 0.2 || (t > 0.42 && t < 0.5) || (t > 0.72 && t < 0.78)) return "";
     }
-    return tone === 0 ? "W" : tone === 1 ? "L" : tone === 2 ? "D" : "";
+    const toneChar: Record<number, string> = { 0: "W", 1: "L", 2: "D" };
+    return toneChar[tone] ?? "";
   });
   return fillNotches(despeckle(g, "D"));
 };
@@ -525,7 +528,9 @@ const spireGrid = (): string[][] => {
   for (let y = 2; y < PH; y++) {
     const [xl, ridge, xr] = spire(y);
     for (let x = xl; x <= xr; x++) {
-      let c = x < ridge ? "L" : x === ridge ? "W" : "D";
+      let c = "D";
+      if (x < ridge) c = "L";
+      else if (x === ridge) c = "W";
       if (x === xl || x === xr) c = "o";
       g[y][x] = c;
     }
@@ -566,7 +571,9 @@ const rubble = (g: string[][], rocks: [number, number, number][]): void => {
         const edge = x === x0 || x === x0 + w - 1 || y === y0;
         const corner = (x === x0 || x === x0 + w - 1) && y === y0;
         if (corner) continue;
-        g[y][x] = edge ? "o" : y === y0 + 1 && x < x0 + w - 2 ? "L" : "D";
+        if (edge) g[y][x] = "o";
+        else if (y === y0 + 1 && x < x0 + w - 2) g[y][x] = "L";
+        else g[y][x] = "D";
       }
     }
   }
@@ -642,9 +649,14 @@ const fenceGrid = (): Grid => {
       const red = Math.floor(j / 3) % 2 === 1;
       const end = x === x0 || x === x0 + len - 1;
       g[top][x] = end ? "." : "o";
-      g[top + 1][x] = end ? "o" : red ? "R" : "W";
-      g[top + 2][x] = end ? "o" : red ? "R" : "W";
-      g[top + 3][x] = end ? "o" : red ? "R" : "L";
+      const body = (plain: string): string => {
+        if (end) return "o";
+        if (red) return "R";
+        return plain;
+      };
+      g[top + 1][x] = body("W");
+      g[top + 2][x] = body("W");
+      g[top + 3][x] = body("L");
       g[top + 4][x] = end ? "." : "o";
     }
   };

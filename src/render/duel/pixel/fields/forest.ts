@@ -22,6 +22,31 @@ const SHAFT_CORE = "rgba(240,252,214,0.10)";
 const BARK = { o: "#17241d", d: "#22322a", m: "#2f4136", l: "#3e5443", h: "#506a50" };
 const MOSS = { d: "#33502f", m: "#466a37", l: "#5b8040", h: "#759a4a" };
 const LEAF = { base: "#0d1d16", lo: "#16301f", mid: "#1f4027", hi: "#2d5631", tip: "#3d6b38" };
+
+function crownShade(l: number): string {
+  if (l > 0.3) return "a";
+  if (l > -0.3) return "b";
+  return "c";
+}
+
+function crackColor(u: number): string {
+  if (u < 0.42) return BARK.m;
+  if (u < 0.76) return BARK.d;
+  return BARK.o;
+}
+
+function leafColor(l: number): string {
+  if (l > 0.55) return LEAF.hi;
+  if (l > 0.05) return LEAF.mid;
+  if (l > -0.55) return LEAF.lo;
+  return LEAF.base;
+}
+
+function tuftSize(d: number): number {
+  if (d < 12) return 0;
+  if (d < 30) return 1;
+  return 2;
+}
 const FLOOR_FAR = "#4c7148";
 const GROUND: [number, string][] = [
   [113, "#62895a"],
@@ -133,7 +158,7 @@ const crown = (rx: number, ry: number, seed: number): Grid => {
       const ln = -0.6 * ((x - own.x) / own.r) - 0.8 * ((y - own.y) / own.r);
       const lg = -0.6 * (x / rx) - 0.8 * (y / ry);
       const l = 0.45 * ln + 0.75 * lg;
-      row += l > 0.3 ? "a" : l > -0.3 ? "b" : "c";
+      row += crownShade(l);
     }
     rows.push(row);
   }
@@ -258,7 +283,7 @@ const trunk = (p: PixelPainter, t: Trunk): void => {
         const pu = (u * plates + 0.15 * Math.sin(y * 0.13 + t.seed)) % 1;
         const plate = Math.floor(u * plates + 0.15 * Math.sin(y * 0.13 + t.seed));
         const cracked = Math.sin(y * 0.21 + plate * 2.3 + t.seed) > -0.75;
-        if (pu < 1 / (span / plates) && cracked && u > 0.1) c = u < 0.42 ? BARK.m : u < 0.76 ? BARK.d : BARK.o;
+        if (pu < 1 / (span / plates) && cracked && u > 0.1) c = crackColor(u);
       }
       // cushion moss: one continuous strip down the lit side with a scalloped inner edge
       const env = Math.min(1, (Math.sin(y * 0.06 + t.seed * 3) + 0.45) * 2.5, (y - 18) / 6);
@@ -319,7 +344,7 @@ const paintCanopy = (p: PixelPainter): void => {
       const nx = wdx(x, own.x) / own.r;
       const ny = (y - own.y) / own.r;
       const l = -0.55 * nx - 0.83 * ny;
-      const c = l > 0.55 ? LEAF.hi : l > 0.05 ? LEAF.mid : l > -0.55 ? LEAF.lo : LEAF.base;
+      const c = leafColor(l);
       p.px(x, y, c);
       low = y;
     }
@@ -447,7 +472,7 @@ const paintGround = (p: PixelPainter): void => {
     for (let i = 0; i < n; i++) {
       if (p.rand() < 0.45) continue;
       const cx = Math.round(phase + (i / n) * TILE_W + (p.rand() - 0.5) * spacing * 0.6);
-      const size = d < 12 ? 0 : d < 30 ? 1 : 2;
+      const size = tuftSize(d);
       tuft(p, cx, y, size);
       if (size > 0 && p.rand() < 0.5) tuft(p, cx + (size === 2 ? 9 : 6), y + 1, size - 1);
     }

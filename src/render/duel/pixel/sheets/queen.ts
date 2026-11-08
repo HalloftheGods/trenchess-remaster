@@ -262,12 +262,18 @@ const legChain = (h: Horse, i: number): { hip: P; knee: P; fet: P; hoof: P; grou
   return { hip, knee, fet, hoof, ground };
 };
 
+const upperLegWidth = (far: boolean, front: boolean): number => {
+  if (far) return 3;
+  if (front) return 4;
+  return 5;
+};
+
 const drawLeg = (cv: Canvas, h: Horse, i: number): void => {
   const far = i >= 4;
   const front = isFront(i);
   const { hip, knee, fet, hoof, ground } = legChain(h, i);
   const m = newMask();
-  seg(m, hip, knee, far ? 3 : front ? 4 : 5, far ? 2 : 3);
+  seg(m, hip, knee, upperLegWidth(far, front), far ? 2 : 3);
   seg(m, knee, fet, 2, 2);
   seg(m, add(fet, mul(norm(sub(fet, knee)), -1.2)), fet, 3, 3);
   seg(m, fet, hoof, 2, 2);
@@ -604,7 +610,12 @@ const drawRider = (cv: Canvas, h: Horse, r: Rider, built: Built): void => {
   const bl = r.blade ?? 21;
   const d = dir(r.sword);
   const tip = add(hand, mul(d, bl));
-  line(cv, add(hand, mul(d, 2)), tip, (i, n) => (i < 1 ? "m" : i >= n - 1 ? "W" : i % 4 === 1 ? "W" : "M"));
+  line(cv, add(hand, mul(d, 2)), tip, (i, n) => {
+    if (i < 1) return "m";
+    if (i >= n - 1) return "W";
+    if (i % 4 === 1) return "W";
+    return "M";
+  });
   const perp = dir(r.sword + 90);
   const gc = add(hand, mul(d, 1.4));
   line(cv, add(gc, mul(perp, -2)), add(gc, mul(perp, 2)), (i) => (i === 0 ? "Y" : "y"));
@@ -741,7 +752,10 @@ const smear = (from: number, to: number, rIn: number, rOut: number) => (cv: Canv
       const thick = 0.8 + (rOut - rIn) * t;
       if (r > rOut || r < rOut - thick) continue;
       const k = rOut - r;
-      cv.set(x, y, k < 1 ? "W" : k < 2.2 ? "G" : "e");
+      let ch = "e";
+      if (k < 1) ch = "W";
+      else if (k < 2.2) ch = "G";
+      cv.set(x, y, ch);
     }
 };
 

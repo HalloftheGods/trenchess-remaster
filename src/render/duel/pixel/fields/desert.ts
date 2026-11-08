@@ -199,8 +199,13 @@ function mesa(p: PixelPainter, m: Mesa, seed: number): void {
       let c: string;
       if (y < capBot) {
         const row = y - m.top;
-        if (x > shadeX) c = row === 0 ? M.lit : row === 1 ? M.shade : M.deep;
-        else c = row === 0 ? M.cap : row === 1 ? M.lit : M.strata;
+        if (x > shadeX) {
+          if (row === 0) c = M.lit;
+          else if (row === 1) c = M.shade;
+          else c = M.deep;
+        } else if (row === 0) c = M.cap;
+        else if (row === 1) c = M.lit;
+        else c = M.strata;
       } else if (t < 0) {
         const rel = y - capBot;
         c = M.body;

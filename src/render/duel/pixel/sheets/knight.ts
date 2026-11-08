@@ -260,9 +260,11 @@ const drawLeg = (cv: Canvas, p: Pose, leg: Leg, front: boolean, far: boolean): v
     const u: P = [d[0] / l, d[1] / l];
     cap(hm, leg.h, addP(leg.h, mul(u, 1.3)), 1.5, 1.6);
   }
-  paint(cv, hm, far ? { hi: "k", base: "q", sh: "Q", line: "o", shade: [[1, 0], [0, 1]] } : { hi: "m", base: "k", sh: "q", line: "o", shade: [[1, 0], [0, 1]] }, (_x, y, ch) =>
-    grounded && y === FLOOR ? (far ? "Q" : "m") : ch === "m" && grounded && y < FLOOR - 1 ? "k" : undefined,
-  );
+  paint(cv, hm, far ? { hi: "k", base: "q", sh: "Q", line: "o", shade: [[1, 0], [0, 1]] } : { hi: "m", base: "k", sh: "q", line: "o", shade: [[1, 0], [0, 1]] }, (_x, y, ch) => {
+    if (grounded && y === FLOOR) return far ? "Q" : "m";
+    if (ch === "m" && grounded && y < FLOOR - 1) return "k";
+    return undefined;
+  });
 };
 
 const poll = (p: Pose): P => addP(rot(p, [11, -6]), mul(dirOf(-p.neck), 17));
@@ -628,7 +630,10 @@ const drawLance = (cv: Canvas, p: Pose, hand: P): void => {
       const sp = steps(from, to);
       sp.forEach(([x, y], i) => {
         const t = i / sp.length;
-        cv.set(x - off[1] * 0 + (steep ? k : 0), y + (steep ? 0 : k), t > 0.7 - a * 0.1 ? "W" : t > 0.35 ? "M" : "L");
+        let c = "L";
+        if (t > 0.7 - a * 0.1) c = "W";
+        else if (t > 0.35) c = "M";
+        cv.set(x - off[1] * 0 + (steep ? k : 0), y + (steep ? 0 : k), c);
       });
     }
   }
@@ -636,8 +641,13 @@ const drawLance = (cv: Canvas, p: Pose, hand: P): void => {
   pts.forEach(([x, y], i) => {
     if (i >= n - headLen) return;
     const stripe = Math.floor((i + 1) / 4) % 2 === 0;
-    cv.set(x, y, i < 2 ? "r" : stripe ? "L" : "m");
-    cv.set(x + off[0], y + off[1], i < 2 ? "r" : stripe ? "D" : "k");
+    if (i < 2) {
+      cv.set(x, y, "r");
+      cv.set(x + off[0], y + off[1], "r");
+    } else {
+      cv.set(x, y, stripe ? "L" : "m");
+      cv.set(x + off[0], y + off[1], stripe ? "D" : "k");
+    }
   });
   for (let i = n - headLen; i < n; i++) {
     const [x, y] = pts[i];
@@ -676,7 +686,7 @@ const render = (p: Pose): { grid: Grid; tip: P } => {
   const [tx, ty] = [Math.round(tip[0]), Math.round(tip[1])];
   if (p.glint) {
     for (let k = 1; k <= 3; k++) {
-      const c = k === 1 ? "W" : k === 2 ? "Y" : "y";
+      const c = ({ 1: "W", 2: "Y" } as Record<number, string>)[k] ?? "y";
       cv.set(tx + k, ty, c);
       cv.set(tx - k, ty, c);
       cv.set(tx, ty - k, c);

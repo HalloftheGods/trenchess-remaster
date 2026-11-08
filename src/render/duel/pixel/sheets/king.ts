@@ -112,10 +112,16 @@ const drawSword = (b: Blade, grip: [number, number] = [-5, -2]): { layer: Layer;
   l.set(...side(pm, 1), "g");
   l.set(...at(b, -8), "g");
   // crossguard, perpendicular to the blade
+  const guardTone = (o: number): string => {
+    if (o < -1) return "Y";
+    if (o > 1) return "g";
+    return "y";
+  };
+  const backStep = (u: number): number => (u > 0 ? -1 : 1);
   for (let o = -3; o <= 3; o++) {
     const p = side(at(b, 0), o);
-    l.set(...p, o < -1 ? "Y" : o > 1 ? "g" : "y");
-    const q: P = vertical ? [p[0], p[1] + (b.u[1] > 0 ? -1 : 1)] : [p[0] + (b.u[0] > 0 ? -1 : 1), p[1]];
+    l.set(...p, guardTone(o));
+    const q: P = vertical ? [p[0], p[1] + backStep(b.u[1])] : [p[0] + backStep(b.u[0]), p[1]];
     if (Math.abs(o) <= 1) l.set(...q, "g");
   }
   l.set(...side(at(b, 0), 0), "R");
@@ -235,7 +241,12 @@ const arm = (l: Layer, sh: P, el: P, hand: P, ramp: string[], far = false): void
     const t = (n - 2) / n;
     const c: P = [Math.round(el[0] + (hand[0] - el[0]) * t), Math.round(el[1] + (hand[1] - el[1]) * t)];
     const vertical = Math.abs(hand[1] - el[1]) >= Math.abs(hand[0] - el[0]);
-    [-1, 0, 1].forEach((o) => l.set(vertical ? c[0] + o : c[0], vertical ? c[1] : c[1] + o, far ? "g" : o < 1 ? "y" : "g"));
+    const cuffTone = (o: number): string => {
+      if (far) return "g";
+      if (o < 1) return "y";
+      return "g";
+    };
+    [-1, 0, 1].forEach((o) => l.set(vertical ? c[0] + o : c[0], vertical ? c[1] : c[1] + o, cuffTone(o)));
   }
   if (!far) l.stamp(ELBOW, el[0] - 1, el[1] - 1);
   l.stamp(far ? ["mmk", "mkk", "kkk"] : GAUNT, hand[0] - 1, hand[1] - 1);
@@ -301,7 +312,10 @@ const drawSmear = (l: Layer, c: P, r: number, a0: number, a1: number): void => {
       const th = 0.6 + Math.pow(t, 1.6) * 6.5;
       const k = r - d;
       if (k < -0.5 || k > th) continue;
-      l.set(x, y, k < 0.9 || th < 2 ? "W" : k < th * 0.65 ? "L" : "B");
+      let tone = "B";
+      if (k < 0.9 || th < 2) tone = "W";
+      else if (k < th * 0.65) tone = "L";
+      l.set(x, y, tone);
     }
 };
 

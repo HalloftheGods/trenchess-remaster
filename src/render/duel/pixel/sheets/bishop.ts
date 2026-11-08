@@ -341,8 +341,12 @@ const sleeve = (sh: P, el: P, wr: P, far: boolean): Layer => {
       const lf = m.get(x - 1, y) === ".";
       const dn = m.get(x, y + 1) === ".";
       const rt = m.get(x + 1, y) === ".";
-      if (c === "X") out.set(x, y, dn || rt ? "g" : far ? "g" : up || lf ? "Y" : "y");
-      else if (up || (lf && !dn)) out.set(x, y, lite);
+      if (c === "X") {
+        let gem = "y";
+        if (dn || rt || far) gem = "g";
+        else if (up || lf) gem = "Y";
+        out.set(x, y, gem);
+      } else if (up || (lf && !dn)) out.set(x, y, lite);
       else if (dn || rt) out.set(x, y, dark);
       else out.set(x, y, c);
     }
@@ -427,7 +431,11 @@ const drawStaff = (l: Layer, s: Staff): void => {
       if (d >= 2.5 && d < 4.0) {
         const lit = -x - y;
         const inner = d < 3.0;
-        l.set(ox + x, oy + y, inner ? (lit > 0 ? "y" : "g") : lit > 2 ? "Y" : lit < -2 ? "g" : "y");
+        let rc = "y";
+        if (inner) rc = lit > 0 ? "y" : "g";
+        else if (lit > 2) rc = "Y";
+        else if (lit < -2) rc = "g";
+        l.set(ox + x, oy + y, rc);
       }
     }
   // finial: a small gold point beyond the ring
@@ -492,7 +500,10 @@ const smear = (l: Layer, c: P, r: number, a0: number, a1: number): void => {
       const rr = r - k;
       const x = Math.round(c[0] + Math.cos(a) * rr);
       const y = Math.round(c[1] + Math.sin(a) * rr);
-      put(x, y, k === 0 ? "W" : k < thick - 1 ? "G" : "L");
+      let ch = "L";
+      if (k === 0) ch = "W";
+      else if (k < thick - 1) ch = "G";
+      put(x, y, ch);
     }
   }
 };
@@ -571,7 +582,9 @@ const build = (p: Pose): { grid: Grid; tip: P } => {
   body.stamp(sk.g, tx - sk.col + (p.sx ?? 0), skY);
   body.stamp(TORSO, tx, ty);
   const hk = p.head ?? "n";
-  const hg = hk === "up" ? HEAD_UP : hk === "hit" ? HEAD_HIT : HEAD;
+  let hg = HEAD;
+  if (hk === "up") hg = HEAD_UP;
+  else if (hk === "hit") hg = HEAD_HIT;
   const [hdx, hdy] = p.hd ?? [0, 0];
   body.stamp(hg, tx + hdx, ty - hg.length + 1 + hdy);
   body.outline();

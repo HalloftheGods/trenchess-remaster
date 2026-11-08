@@ -206,7 +206,10 @@ const growTree = (s: TreeSpec): Tree => {
       for (let j = 0; j < len; j++) {
         const yy = y0 + j;
         if (yy >= H || at(x, yy)) break;
-        out[yy][x] = j >= len - 1 && len > 3 ? "h" : i === 0 && j < len * 0.6 ? "G" : "g";
+        let ch = "g";
+        if (j >= len - 1 && len > 3) ch = "h";
+        else if (i === 0 && j < len * 0.6) ch = "G";
+        out[yy][x] = ch;
       }
     }
   }
@@ -247,12 +250,16 @@ const CRATERS: Grid = [
 /** A thin streak of haze: tapered ends stepping 1-2-3, a lit top edge where the moon is behind it. */
 const streak = (p: PixelPainter, x: number, y: number, len: number, rows: number, c: string, lit?: string): void => {
   for (let j = 0; j < rows; j++) {
-    const inset = j === 0 ? 6 : j === rows - 1 ? 4 : 0;
+    let inset = 0;
+    if (j === 0) inset = 6;
+    else if (j === rows - 1) inset = 4;
     const skew = j * 3;
     for (let i = inset; i < len - inset; i++) {
       const xx = x + i + skew, yy = y + j;
       const md = (xx - MOON_X) ** 2 + (yy - MOON_Y) ** 2;
-      p.px(xx, yy, lit && md <= 125 ? (md <= 81 ? MOON.veil : HAZE.glow) : c);
+      let col = c;
+      if (lit && md <= 125) col = md <= 81 ? MOON.veil : HAZE.glow;
+      p.px(xx, yy, col);
     }
     if (lit && j === 0) {
       for (let i = inset; i < len - inset; i++) {
@@ -458,7 +465,7 @@ const reedClump = (seed: number, h: number, cattails: number): Grid => {
     const top = Math.floor(h * (0.15 + R() * 0.5));
     const lean = (R() - 0.5) * 1.6;
     const len = h - top;
-    const c = i % 3 === 0 ? "l" : i % 3 === 1 ? "b" : "d";
+    const c = ["l", "b", "d"][i % 3];
     for (let j = 0; j < len; j++) {
       const t = j / len;
       const x = Math.round(bx + lean * t * t * len * 0.35);
@@ -466,7 +473,9 @@ const reedClump = (seed: number, h: number, cattails: number): Grid => {
     }
   }
   for (let k = 0; k < cattails; k++) {
-    const x = cx + (k === 0 ? 0 : k % 2 ? -2 - k : 2 + k);
+    let dx = 0;
+    if (k !== 0) dx = k % 2 ? -2 - k : 2 + k;
+    const x = cx + dx;
     const top = k === 0 ? 0 : 1 + Math.floor(R() * h * 0.25);
     for (let y = top + 1; y < h; y++) set(x, y, "s");
     set(x, top, "s");
@@ -537,7 +546,10 @@ const paintGround = (p: PixelPainter): void => {
     const depth = (y - 120) / 36;
     const n = Math.round(8 + depth * 4);
     const len = 2 + Math.round(depth * 7);
-    const shade = y < 128 ? MUD.m1 : y < 136 ? MUD.m2 : y < 146 ? MUD.m3 : MUD.m4;
+    let shade = MUD.m4;
+    if (y < 128) shade = MUD.m1;
+    else if (y < 136) shade = MUD.m2;
+    else if (y < 146) shade = MUD.m3;
     for (let k = 0; k < n; k++) {
       const x = Math.floor(p.rand() * TILE_W);
       if (y <= FAR_EDGE(x) + 3 || y <= FAR_EDGE(x + len) + 3 || y >= NEAR_EDGE(x) - 2) continue;
@@ -583,7 +595,9 @@ const paintGround = (p: PixelPainter): void => {
     const x = Math.floor(p.rand() * TILE_W);
     const y = 125 + Math.floor(p.rand() * 30);
     if (y <= FAR_EDGE(x) + 3 || y + 4 >= NEAR_EDGE(x) - 2) continue;
-    const g = y < 133 ? CLOD_S : y < 146 ? CLOD_M : CLOD_L;
+    let g = CLOD_L;
+    if (y < 133) g = CLOD_S;
+    else if (y < 146) g = CLOD_M;
     p.stamp(g, x, y, clodPal);
   }
   // sedge tufts: tiny far away, taller near
@@ -599,7 +613,10 @@ const paintGround = (p: PixelPainter): void => {
       const x = cx + Math.round((p.rand() - 0.5) * (8 + depth * 14));
       const y = cy + Math.round((p.rand() - 0.5) * 3);
       if (y <= FAR_EDGE(x) + 3 || y >= NEAR_EDGE(x) - 3 || y >= NEAR_EDGE(x + 8) - 3) continue;
-      const g = y < 130 ? SEDGE[0] : y < 140 ? SEDGE[1] : y < 150 ? SEDGE[2] : SEDGE[3];
+      let g = SEDGE[3];
+      if (y < 130) g = SEDGE[0];
+      else if (y < 140) g = SEDGE[1];
+      else if (y < 150) g = SEDGE[2];
       plant(p, g, x, y, sedgePal);
     }
   }

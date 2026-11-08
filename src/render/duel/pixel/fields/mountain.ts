@@ -260,7 +260,10 @@ const paintCrags = (p: PixelPainter): void => {
       if (below === 0 && back >= 0 && back !== k) col = CRAG.deep;
       // snow cap on the summit with a ragged lower edge, and snow lying on each ledge
       const tongue = (((dx * 5 + k * 3) % 7) + 7) % 7;
-      const cap = (c.y < 92 ? 10 : 7) + (tongue < 2 ? 3 : tongue < 4 ? 1 : 0) - (lit ? 0 : 2);
+      let tongueLen = 0;
+      if (tongue < 2) tongueLen = 3;
+      else if (tongue < 4) tongueLen = 1;
+      const cap = (c.y < 92 ? 10 : 7) + tongueLen - (lit ? 0 : 2);
       const flatL = spireTop(c, x - 1) === top, flatR = spireTop(c, x + 1) === top;
       const ledge = (flatL || flatR) && Math.abs(dx) > 1;
       if (dy < cap && back === k) col = lit ? CRAG.snow : CRAG.snowShade;
@@ -312,8 +315,11 @@ const stone = (w: number, h: number, snow: boolean): Grid => {
       const right = i >= Math.round(w * 0.66) + Math.floor(j / 3);
       const topFace = j <= topH;
       let c: string;
-      if (topFace) c = right ? "m" : !inside(i, j - 2) && !right ? "h" : "l";
-      else c = right ? "d" : "m";
+      if (topFace) {
+        if (right) c = "m";
+        else if (!inside(i, j - 2)) c = "h";
+        else c = "l";
+      } else c = right ? "d" : "m";
       if (j === h - 2 && !topFace) c = "d";
       if (snow && topFace) c = right ? "t" : "s";
       r += c;
