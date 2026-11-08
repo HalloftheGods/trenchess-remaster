@@ -72,6 +72,27 @@ export class BoardView {
     s.shimmer = this.scene.tweens.add({ targets: s.glint, alpha: 0.22, duration: 1400 + Math.random() * 900, yoyo: true, repeat: -1, delay: Math.random() * 1500, ease: "Sine.InOut" });
   }
 
+  relayout(duration: number): void {
+    this.tiles.forEach((row, r) =>
+      row.forEach((s, c) => {
+        const { x, y } = toScreen(r, c);
+        const lift = ELEVATION[this.terrain[r]?.[c] ?? "flat"];
+        const moves: [Phaser.GameObjects.Image, number, number][] = [
+          [s.tile, y, LAYER.tile],
+          [s.back, y - lift, LAYER.backDecor],
+          [s.front, y - lift, LAYER.frontDecor],
+          [s.fog, y - lift, LAYER.fx],
+          [s.glint, y - lift, LAYER.marker],
+        ];
+        for (const [obj, ty, layer] of moves) {
+          obj.setDepth(depthOf(r, c, layer));
+          if (duration > 0) this.scene.tweens.add({ targets: obj, x, y: ty, duration, ease: "Cubic.InOut" });
+          else obj.setPosition(x, ty);
+        }
+      }),
+    );
+  }
+
   pop(r: number, c: number): void {
     const s = this.tiles[r][c];
     const targets = [s.tile, s.back, s.front];

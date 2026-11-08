@@ -1,7 +1,7 @@
 import type { Cell, GameState, Order, PlayerId, Pos, Terrain, TurnEvent } from "../engine/types";
 import { applyOrder, cloneState, createGame, endTurn, legalOrders, unitsInDanger } from "../engine/game";
 import { isInCheck, findKing, pseudoMovesFor } from "../engine/moves";
-import { canDeployTo, canPlaceTerrain, createArmies, randomBattlefield, randomTerrainFor, seededRng, swapUnits, terrainCount } from "../engine/setup";
+import { canDeployTo, canPlaceTerrain, createArmies, randomBattlefield, randomFormation, randomTerrainFor, seededRng, swapUnits, terrainCount } from "../engine/setup";
 import { TERRAIN_QUOTA, deployRows, homeRows, inRows, opponent } from "../engine/rules";
 import { emptyGrid } from "../engine/game";
 import { canSee, visibleCells } from "../engine/vision";
@@ -11,16 +11,21 @@ import type { UnitView } from "../render/board/UnitView";
 import type { Hud } from "../ui/Hud";
 import { sfx } from "../audio/sfx";
 import { AiClient } from "./AiClient";
+import { FACTIONS } from "../render/art/unitArt";
 
 export interface MatchOptions {
   opponent: "ai" | "hotseat";
   difficulty: Difficulty;
   ordersPerTurn: number;
-  battlefield: "random" | "open";
+  mode: GameMode;
   fog: boolean;
+  /** Chi only: the id of a battlefield preset from engine/presets. */
+  preset?: string;
 }
 
 export type DeployTool = "units" | Terrain;
+
+export type GameMode = "omega" | "chi" | "pi" | "alpha";
 
 type Phase = "idle" | "deploy" | "battle" | "over";
 
@@ -49,10 +54,29 @@ export class Match {
     this.units.sync(this.board);
   }
 
+  showcaseOpen(): void {
+    this.board = createArmies();
+    this.terrain = emptyGrid<Terrain>("flat");
+    this.boardView.setTerrain(this.terrain);
+    this.units.sync(this.board);
+  }
+
+  showcaseLand(seed: number): void {
+    this.board = emptyGrid<Cell>(null);
+    this.terrain = randomBattlefield(seed).terrain;
+    this.boardView.setTerrain(this.terrain);
+    this.units.sync(this.board);
+  }
+
   start(options: MatchOptions): void {
     this.options = options;
     const seed = Math.floor(Math.random() * 1e9);
-    const field = options.battlefield === "random" ? randomBattlefield(seed) : { board: createArmies(), terrain: emptyGrid<Terrain>("flat") };
+    const field = options.mode === "omega" ? { board: createArmies(), terrain: emptyGrid<Terrain>("flat") } : randomBattlefield(seed);
+    if (options.mode === "alpha") {
+      const rng = seededRng(seed + 1);
+      randomFormation(field.board, field.terrain, 0, rng);
+      randomFormation(field.board, field.terrain, 1, rng);
+    }
     this.board = field.board;
     this.terrain = field.terrain;
     this.state = null;
@@ -64,7 +88,12 @@ export class Match {
     this.units.sync(this.board);
     this.boardView.setFog(null);
     this.units.setVisibility(() => true, this.board);
+    if (options.mode === "pi" || options.mode === "alpha") return this.beginBattle();
     this.refreshDeploy();
+  }
+
+  get terrainLocked(): boolean {
+    return this.options.mode === "chi";
   }
 
   isHuman(p: PlayerId): boolean {
@@ -105,7 +134,7 @@ export class Match {
     if (this.options.opponent === "hotseat" && this.deployer === 0) {
       this.deployer = 1;
       this.selected = null;
-      this.hud.banner("Crimson Host deploys", "Shape your half of the battlefield");
+      this.hud.banner(`${FACTIONS[1].name} deploys`, "Shape your half of the battlefield");
       this.refreshDeploy();
       return;
     }
@@ -113,7 +142,7 @@ export class Match {
   }
 
   private beginBattle(): void {
-    if (this.options.opponent === "ai" && this.options.battlefield === "open") {
+    if (this.options.opponent === "ai" && this.options.mode === "omega") {
       randomTerrainFor(this.board, this.terrain, 1, seededRng(Math.floor(Math.random() * 1e9)));
       this.boardView.setTerrain(this.terrain);
     }
@@ -121,7 +150,7 @@ export class Match {
     this.phase = "battle";
     this.boardView.clearMarkers();
     this.hud.showDeploy(false);
-    this.hud.banner("Battle!", "Azure Legion moves first. 1 order on the opening turn.");
+    this.hud.banner("Battle!", `${FACTIONS[0].name} moves first. 1 order on the opening turn.`);
     sfx.turn();
     this.refreshBattle();
   }
@@ -323,7 +352,7 @@ export class Match {
 
   private announceTurn(): void {
     const s = this.state!;
-    const name = s.current === 0 ? "Azure Legion" : "Crimson Host";
+    const name = FACTIONS[s.current].name;
     const orders = `${s.ordersLeft} order${s.ordersLeft > 1 ? "s" : ""}`;
     const check = isInCheck(s, s.current) ? " · KING IN CHECK!" : "";
     this.hud.banner(`${name}`, `Turn ${s.turn} · ${orders}${check}`);
@@ -357,6 +386,15 @@ export class Match {
     this.units.setVisibility(() => true, s.board);
     if (outcome.winner !== null) this.units.celebrate(outcome.winner);
     setTimeout(() => this.hud.gameOver(outcome, this.options, s), 1800);
+  }
+
+  refresh(): void {
+    if (this.phase === "deploy") this.refreshDeploy();
+    if (this.phase === "battle" && !this.busy) this.refreshBattle();
+  }
+
+  get liveBoard(): Cell[][] {
+    return this.state?.board ?? this.board;
   }
 
   quit(): void {

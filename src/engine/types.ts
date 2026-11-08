@@ -10,6 +10,8 @@ export interface Unit {
   id: number;
   type: UnitType;
   owner: PlayerId;
+  /** Set once the unit has taken an order; a pawn that has not may jumpstart two squares. */
+  moved?: boolean;
 }
 
 export type Cell = Unit | null;
