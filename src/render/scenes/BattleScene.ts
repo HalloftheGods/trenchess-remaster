@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { Pos } from "../../engine/types";
-import { inBounds } from "../../engine/rules";
+import { BOARD_SIZE, inBounds } from "../../engine/rules";
 import { BoardView } from "../board/BoardView";
 import { UnitView } from "../board/UnitView";
 import { Fx } from "../board/Fx";
@@ -26,6 +26,7 @@ export class BattleScene extends Phaser.Scene {
   private dragging = false;
   private orbit = 0;
   private drift = true;
+  private plinthArt: Phaser.GameObjects.Graphics[] = [];
 
   constructor() {
     super("battle");
@@ -42,7 +43,10 @@ export class BattleScene extends Phaser.Scene {
     paintFx(this);
     this.plinth();
     this.fx = new Fx(this);
-    this.board = new BoardView(this);
+    this.board = new BoardView(this, () => {
+      this.plinth();
+      this.fit();
+    });
     this.units = new UnitView(this, this.board, this.fx);
     this.clouds();
     this.time.addEvent({ delay: 450, loop: true, callback: () => this.desertHeat() });
@@ -53,14 +57,18 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private plinth(): void {
+    this.plinthArt.forEach((g) => g.destroy());
+    const last = BOARD_SIZE - 1;
+    const k = BOARD_SIZE / 12;
     const top = toScreen(0, 0);
-    const bottom = toScreen(11, 11);
+    const bottom = toScreen(last, last);
     const g = this.add.graphics().setDepth(-10);
     g.fillStyle(0x000000, 0.35);
-    g.fillEllipse(0, (top.y + bottom.y) / 2 + 40, 1250, 640);
+    g.fillEllipse(0, (top.y + bottom.y) / 2 + 40, 1250 * k, 640 * k);
     const rim = this.add.graphics().setDepth(-5);
-    const l = toScreen(11, 0);
-    const r = toScreen(0, 11);
+    this.plinthArt = [g, rim];
+    const l = toScreen(last, 0);
+    const r = toScreen(0, last);
     const pad = 10;
     rim.fillStyle(0x3b2a1c, 1);
     rim.fillPoints(
@@ -93,9 +101,15 @@ export class BattleScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const w = this.scale.width;
     const h = this.scale.height;
-    const zoom = Math.min(w / 1180, h / 760);
+    const k = BOARD_SIZE / 12;
+    const zoom = Math.min(w / (1180 * k), h / (760 * k));
     cam.setZoom(Phaser.Math.Clamp(zoom, 0.4, 1.6));
-    cam.centerOn(0, toScreen(5.5, 5.5).y + 10);
+    cam.centerOn(0, this.middleY() + 10);
+  }
+
+  private middleY(): number {
+    const mid = (BOARD_SIZE - 1) / 2;
+    return toScreen(mid, mid).y;
   }
 
   setDrift(on: boolean): void {
@@ -107,7 +121,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.drift) return;
     this.orbit += dt / 4000;
     const cam = this.cameras.main;
-    cam.centerOn(Math.sin(this.orbit) * 60, toScreen(5.5, 5.5).y + Math.cos(this.orbit * 0.7) * 25);
+    cam.centerOn(Math.sin(this.orbit) * 60, this.middleY() + Math.cos(this.orbit * 0.7) * 25);
   }
 
   private cellAt(p: Phaser.Input.Pointer): Pos | null {

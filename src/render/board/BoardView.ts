@@ -25,12 +25,27 @@ export class BoardView {
   private hover: Phaser.GameObjects.Image;
   private terrain: Terrain[][] = [];
 
-  constructor(private scene: Phaser.Scene) {
+  constructor(private scene: Phaser.Scene, private onResize: () => void = () => {}) {
+    this.buildTiles();
+    this.hover = scene.add.image(0, 0, "mk-hover").setVisible(false);
+  }
+
+  get size(): number {
+    return this.tiles.length;
+  }
+
+  private buildTiles(): void {
+    for (const row of this.tiles) {
+      for (const s of row) {
+        s.shimmer?.remove();
+        [s.tile, s.back, s.front, s.fog, s.glint].forEach((o) => o.destroy());
+      }
+    }
+    this.tiles = [];
     for (let r = 0; r < BOARD_SIZE; r++) {
       this.tiles.push([]);
       for (let c = 0; c < BOARD_SIZE; c++) this.tiles[r].push(this.createTile(r, c));
     }
-    this.hover = scene.add.image(0, 0, "mk-hover").setVisible(false);
   }
 
   private createTile(r: number, c: number): TileSprites {
@@ -44,6 +59,12 @@ export class BoardView {
   }
 
   setTerrain(terrain: Terrain[][]): void {
+    if (terrain.length !== this.tiles.length) {
+      this.clearMarkers();
+      this.clearPreview();
+      this.buildTiles();
+      this.onResize();
+    }
     this.terrain = terrain;
     terrain.forEach((row, r) => row.forEach((t, c) => this.paintCell(r, c, t)));
   }

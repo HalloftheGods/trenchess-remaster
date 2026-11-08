@@ -1,4 +1,5 @@
 import type { Terrain } from "../engine/types";
+import { BOARD_SIZE } from "../engine/rules";
 
 export const TILE_W = 84;
 export const TILE_H = 42;
@@ -18,8 +19,6 @@ export interface ScreenPoint {
   y: number;
 }
 
-const LAST = 11;
-
 let rotation = 0;
 
 export const getRotation = (): number => rotation;
@@ -31,7 +30,7 @@ export const setRotation = (quarterTurns: number): void => {
 const rotate = (r: number, c: number, turns: number): [number, number] => {
   let vr = r;
   let vc = c;
-  for (let i = 0; i < turns; i++) [vr, vc] = [vc, LAST - vr];
+  for (let i = 0; i < turns; i++) [vr, vc] = [vc, BOARD_SIZE - 1 - vr];
   return [vr, vc];
 };
 

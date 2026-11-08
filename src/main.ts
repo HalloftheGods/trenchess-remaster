@@ -25,6 +25,7 @@ const readOptions = (form: HTMLFormElement): MatchOptions => {
     ordersPerTurn: Number(data.get("orders")),
     mode: data.get("mode") as MatchOptions["mode"],
     fog: data.get("fog") === "on",
+    board: data.get("board") === "classic" ? "classic" : "extended",
   };
 };
 

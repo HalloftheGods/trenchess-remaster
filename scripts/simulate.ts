@@ -3,22 +3,22 @@
  *
  * Plays many games with the real rules engine and AI (src/engine) and reports
  * how long they last, how they end, and how long it takes the armies to make
- * contact. Board size is a compile-time constant in src/engine/rules.ts, so
- * each size gets its own Vite SSR module graph with BOARD_SIZE (and the
- * terrain quota) rewritten on load. The engine source is never modified.
+ * contact. The engine is loaded through Vite SSR and the board size is set per
+ * game with setBoardSize() from src/engine/rules.ts.
  *
  *   pnpm simulate                                  # defaults below
- *   pnpm simulate --sizes 8,10,12,14,16 --games 40
+ *   pnpm simulate --sizes classic,extended --games 40
+ *   pnpm simulate --sizes 8,10,12,14,16
  *   pnpm simulate --ai veteran --orders 2 --games 10
  *   pnpm simulate --battlefield open --json results.json
  *
  * Options
- *   --sizes        comma list of even board sizes, 8 or more   (default 8,10,12,14,16)
+ *   --sizes        comma list of even sizes (8+) or classic/extended (default 8,12)
  *   --games        games per size per mode                      (default 24)
  *   --ai           recruit | veteran | warlord, or "a:b" for different sides (default recruit)
  *   --orders       orders per turn, comma list: 1 = Classic, 2 = Command (default 1,2)
  *   --battlefield  random | open                                (default random)
- *   --terrain      scale (keep 12x12 terrain density) | fixed (16 tiles a side) (default scale)
+ *   --terrain      scale (8 tiles on 8x8, 12x12 density elsewhere) | fixed (16 a side) (default scale)
  *   --max-turns    turn cap before a game counts as a timeout   (default 400)
  *   --workers      parallel processes                           (default CPU count - 1)
  *   --seed         base seed                                    (default 1)
@@ -75,40 +75,29 @@ const parseArgs = (argv: string[]): Record<string, string> => {
   return out;
 };
 
-const terrainQuota = (size: number, mode: string): number =>
-  mode === "fixed" ? CLASSIC_QUOTA : Math.round((CLASSIC_QUOTA * size * size) / (CLASSIC_SIZE * CLASSIC_SIZE));
+const NAMED_SIZES: Record<string, number> = { classic: 8, extended: 12 };
 
-// ---------------------------------------------------------------- engine loading (one graph per size)
-
-const engines = new Map<string, Promise<{ server: ViteDevServer; mods: Record<string, any> }>>();
-
-const loadEngine = (size: number, quota: number) => {
-  const key = `${size}:${quota}`;
-  if (!engines.has(key)) engines.set(key, bootEngine(size, quota));
-  return engines.get(key)!;
+// The two menu boards use their own quotas (8 and 16); other sizes keep 12x12 density unless --terrain fixed.
+const terrainQuota = (size: number, mode: string): number => {
+  if (mode === "fixed") return CLASSIC_QUOTA;
+  if (size === 8) return 8;
+  return Math.round((CLASSIC_QUOTA * size * size) / (CLASSIC_SIZE * CLASSIC_SIZE));
 };
 
-const bootEngine = async (size: number, quota: number) => {
+// ---------------------------------------------------------------- engine loading
+
+let engine: Promise<{ server: ViteDevServer; mods: Record<string, any> }> | null = null;
+
+const loadEngine = () => (engine ??= bootEngine());
+
+const bootEngine = async () => {
   const server = await createServer({
     root: ROOT,
     configFile: false,
     logLevel: "error",
     appType: "custom",
-    server: { middlewareMode: true, hmr: false, ws: false },
+    server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] },
-    plugins: [
-      {
-        name: "trenchess-board-size",
-        transform(code: string, id: string) {
-          if (!id.replace(/\\/g, "/").endsWith("/src/engine/rules.ts")) return null;
-          const patched = code
-            .replace(/export const BOARD_SIZE = \d+;/, `export const BOARD_SIZE = ${size};`)
-            .replace(/export const TERRAIN_QUOTA = \d+;/, `export const TERRAIN_QUOTA = ${quota};`);
-          if (!patched.includes(`BOARD_SIZE = ${size};`)) throw new Error("could not patch BOARD_SIZE in rules.ts");
-          return patched;
-        },
-      },
-    ],
   });
   const load = (p: string) => server.ssrLoadModule(`/src/engine/${p}.ts`);
   const [game, setup, ai, rules, moves] = await Promise.all(["game", "setup", "ai", "rules", "moves"].map(load));
@@ -117,38 +106,14 @@ const bootEngine = async (size: number, quota: number) => {
 
 // ---------------------------------------------------------------- one game
 
-/** Classic formation scaled to the board: armies centred, up to two empty rows behind each back rank. */
-const formation = (size: number, ARMY: string[]) => {
-  const gap = Math.min(2, Math.floor((size - 8) / 2));
-  const col0 = Math.floor((size - 8) / 2);
-  const rows = [
-    { owner: 0, back: size - 1 - gap, front: size - 2 - gap },
-    { owner: 1, back: gap, front: gap + 1 },
-  ];
-  return rows.flatMap(({ owner, back, front }) =>
-    ARMY.flatMap((type, i) => [
-      { owner, type, pos: [back, col0 + i] },
-      { owner, type: "pawn", pos: [front, col0 + i] },
-    ]),
-  );
-};
-
 const buildBattlefield = (m: Record<string, any>, job: Job) => {
-  const { emptyGrid } = m.game;
-  const board = emptyGrid(null);
-  let id = 1;
-  for (const { owner, type, pos } of formation(job.size, m.rules.ARMY)) board[pos[0]][pos[1]] = { id: id++, type, owner };
-  const terrain = emptyGrid("flat");
-  if (job.battlefield === "random") {
-    const rng = m.setup.seededRng(job.seed);
-    m.setup.randomTerrainFor(board, terrain, 0, rng);
-    m.setup.mirrorTerrain(terrain, 0);
-  }
-  return { board, terrain };
+  if (job.battlefield === "random") return m.setup.randomBattlefield(job.seed);
+  return { board: m.setup.createArmies(), terrain: m.game.emptyGrid("flat") };
 };
 
 const playGame = async (job: Job): Promise<GameResult> => {
-  const { mods: m } = await loadEngine(job.size, terrainQuota(job.size, job.terrainMode));
+  const { mods: m } = await loadEngine();
+  m.rules.setBoardSize(job.size, terrainQuota(job.size, job.terrainMode));
   const started = performance.now();
   const { board, terrain } = buildBattlefield(m, job);
   const s = m.game.createGame(board, terrain, { ordersPerTurn: job.orders });
@@ -191,7 +156,7 @@ const playGame = async (job: Job): Promise<GameResult> => {
     orders: job.orders,
     seed: job.seed,
     winner: s.outcome ? s.outcome.winner : null,
-    reason: s.outcome ? s.outcome.reason : drawn ? "bare-kings" : "timeout",
+    reason: s.outcome?.reason ?? (drawn ? "bare-kings" : "timeout"),
     turns: lastTurn,
     orderCount,
     firstCaptureTurn,
@@ -205,7 +170,7 @@ const playGame = async (job: Job): Promise<GameResult> => {
 const runWorker = () => {
   process.on("message", async (job: Job | "exit") => {
     if (job === "exit") {
-      for (const e of engines.values()) await (await e).server.close();
+      if (engine) await (await engine).server.close();
       process.exit(0);
     }
     try {
@@ -319,7 +284,7 @@ const report = (results: GameResult[], cfg: Record<string, unknown>) => {
 
 const runMain = async () => {
   const args = parseArgs(process.argv.slice(2));
-  const sizes = (args.sizes ?? "8,10,12,14,16").split(",").map(Number);
+  const sizes = (args.sizes ?? "8,12").split(",").map((x) => NAMED_SIZES[x] ?? Number(x));
   for (const n of sizes) if (!(n >= 8 && n % 2 === 0)) throw new Error(`board size ${n} must be even and at least 8`);
   const ordersList = (args.orders ?? "1,2").split(",").map(Number);
   const games = Number(args.games ?? 24);
