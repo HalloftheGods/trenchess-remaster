@@ -33,6 +33,12 @@ export const ORDERS: Choice[] = [
   { id: "1", label: "Classic (1)", hint: "One move a turn, as in chess." },
 ];
 
+export const DUELS: Choice[] = [
+  { id: "off", label: "Off", hint: "Captures resolve on the board." },
+  { id: "fast", label: "Fast", hint: "A quick pixel-art clash on every capture." },
+  { id: "full", label: "Full", hint: "The full pixel-art duel: slide in, strike, crumble, pose." },
+];
+
 export const PRESET_CHOICES: Choice[] = PRESETS.map((p) => ({ id: p.id, label: p.name, hint: p.tagline }));
 
 export const STYLE_CHOICES: Choice[] = STYLE_ORDER.map((s) => ({ id: s, label: STYLE_LABELS[s] }));
@@ -50,6 +56,7 @@ export const DEFAULT_OPTIONS: MatchOptions = {
   fog: false,
   board: "extended",
   preset: PRESETS[0].id,
+  duel: "full",
 };
 
 const KEY = "trenchess-setup";

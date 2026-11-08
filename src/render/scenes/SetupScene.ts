@@ -9,7 +9,8 @@ import { bindKeys } from "../ui/widgets/common";
 import { SetupRows } from "./setup/SetupRows";
 import { OnlinePanel } from "./setup/OnlinePanel";
 import { BACKDROP_CHOICES, backdrop, type BackdropMode } from "../board/backdropMode";
-import { BOARDS, COMMANDERS, MODES, OPPONENTS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES, loadOptions, saveOptions } from "./setup/choices";
+import { BOARDS, COMMANDERS, DUELS, MODES, OPPONENTS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES, loadOptions, saveOptions } from "./setup/choices";
+import type { DuelMode } from "../duel/duel";
 import { WORLD_LABELS, WORLD_ORDER, WORLD_TAGLINES, world } from "../art/worlds/registry";
 
 const WORLD_CHOICES = WORLD_ORDER.map((id) => ({ id, label: WORLD_LABELS[id], hint: WORLD_TAGLINES[id] }));
@@ -81,6 +82,7 @@ export class SetupScene extends Phaser.Scene {
     this.online = new OnlinePanel(this, INNER, (start) => this.leave(() => this.game.events.emit("ui:start-online", start)));
     this.rows.row("Online", this.online, this.options.opponent === "online");
     this.rows.row("Orders", new Segmented(this, 0, 0, INNER, ORDERS, String(this.options.ordersPerTurn), (id) => this.set({ ordersPerTurn: Number(id) })));
+    this.rows.row("Duels", new Segmented(this, 0, 0, INNER, DUELS, this.options.duel ?? "full", (id) => this.set({ duel: id as DuelMode })));
     const styleAt = Math.max(0, STYLE_CHOICES.findIndex((c) => c.id === theme.style));
     this.rows.row("Chessmen", new Carousel(this, 0, 0, INNER, STYLE_CHOICES, styleAt, (i) => this.setTheme(STYLE_CHOICES[i].id as PieceStyle, theme.palette)));
     this.rows.row("Colors", new Segmented(this, 0, 0, INNER, PALETTE_CHOICES, theme.palette, (id) => this.setTheme(theme.style, id as PaletteId)));

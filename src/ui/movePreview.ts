@@ -10,7 +10,7 @@ const MID = 5;
 
 type Rel = [number, number];
 
-const CLASSIC: Record<UnitType, (dr: number, dc: number) => boolean> = {
+export const CLASSIC: Record<UnitType, (dr: number, dc: number) => boolean> = {
   king: (dr, dc) => Math.max(Math.abs(dr), Math.abs(dc)) === 1,
   queen: (dr, dc) => dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc),
   rook: (dr, dc) => (dr === 0 || dc === 0) && Math.abs(dr) + Math.abs(dc) > 0,
