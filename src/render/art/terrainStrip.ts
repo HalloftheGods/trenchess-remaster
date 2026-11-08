@@ -3,7 +3,9 @@ import type { Terrain } from "../../engine/types";
 import { ELEVATION, TILE_H, TILE_W } from "../iso";
 import { TILE_TEX_H, tileKey } from "./terrainArt";
 import { decorKey } from "./decorArt";
+import { world } from "./worlds/registry";
 
+/** Strips per world and terrain; a world switch simply misses the cache. */
 const cache = new Map<string, string>();
 
 /** Headroom kept above the tile top, enough for each terrain's decor. */
@@ -16,7 +18,8 @@ const source = (scene: Phaser.Scene, key: string): CanvasImageSource | null => {
 
 /** Two neighbouring board tiles (light and dark) of one terrain, as a data URL for the HUD. */
 export const terrainStrip = (scene: Phaser.Scene, t: Terrain): string => {
-  const hit = cache.get(t);
+  const id = `${world.id}:${t}`;
+  const hit = cache.get(id);
   if (hit) return hit;
   const canvas = document.createElement("canvas");
   canvas.width = TILE_W * 2 + 8;
@@ -47,6 +50,6 @@ export const terrainStrip = (scene: Phaser.Scene, t: Terrain): string => {
   out.height = canvas.height - top;
   out.getContext("2d")!.drawImage(canvas, 0, -top);
   const url = out.toDataURL();
-  cache.set(t, url);
+  cache.set(id, url);
   return url;
 };

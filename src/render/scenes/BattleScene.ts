@@ -61,6 +61,10 @@ export class BattleScene extends Phaser.Scene {
     this.lighting = new Lighting(this);
     this.ambient = new Ambient(this);
     this.board.onTerrainChanged = () => this.rebuildAmbience();
+    this.board.onResized = () => {
+      this.backdrop.relayout(0);
+      this.view.refit();
+    };
     this.board.onRelayout = (duration) => {
       this.backdrop.relayout(duration);
       this.lighting.dim(duration);

@@ -22,6 +22,8 @@ const PROJECT_MS = 500;
 const FRAME_MS = 450;
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 2.2;
+/** The setup panel plus its margins; the board centres in what is left of the screen. */
+const SETUP_PANEL = 470;
 
 interface Framed {
   x: number;
@@ -96,13 +98,15 @@ export class BattleView implements ViewApi {
     const w = this.scene.scale.width;
     const h = this.scene.scale.height;
     const b = boardBounds();
-    const usable = where === "setup" ? w * 0.6 : w;
+    const usable = where === "setup" ? Math.max(w - SETUP_PANEL, w * 0.5) : w;
     const top = getProjection() === "top";
-    const padW = top ? 180 : 170;
-    const padH = top ? 180 : 330;
-    const zoom = Phaser.Math.Clamp(Math.min(usable / (b.width + padW), h / (b.height + padH)), ZOOM_MIN, 1.6);
-    const shift = (w / 2 - usable / 2) / zoom;
-    return { x: b.centerX + shift, y: b.centerY - (top ? 0 : 60), zoom };
+    const padW = top ? 140 : 120;
+    const padH = top ? 160 : 300;
+    const setup = where === "setup";
+    const zoom = Phaser.Math.Clamp(Math.min(usable / (b.width + padW), h / (b.height + padH + (setup ? 80 : 0))), ZOOM_MIN, setup ? 1.2 : 1.6);
+    const shift = (w / 2 - usable / 2 - (setup ? 110 : 0)) / zoom;
+    const lift = (top ? 0 : 50) + (setup ? 90 / zoom : 0);
+    return { x: b.centerX + shift, y: b.centerY - lift, zoom };
   }
 
   frame(where: Framing, duration = FRAME_MS): void {

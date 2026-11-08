@@ -1,47 +1,55 @@
 import Phaser from "phaser";
 import { TILE_H, TILE_W, TOP_TILE } from "../iso";
 import { diamondPath, ellipse, paint, rand } from "./canvas";
+import type { PlinthMaterial } from "./worlds/recipe";
+import { recipe, world } from "./worlds/registry";
 
-/** Carved stone plinths the board rests on: a diamond slab for iso, a square slab for top-down. */
+/** Carved plinths the board rests on: a diamond slab for iso, a square slab for top-down, in the world's material. */
 
 export const PLINTH_MARGIN = 48;
 const THICK = 40;
 const DROP = 26;
 
 export interface PlinthSpec {
+  /** Base of the texture key; `plinthKey` adds the world. */
   key: string;
   width: number;
   height: number;
   /** Texture-space point that sits on the board's surface centre. */
   anchorX: number;
   anchorY: number;
+  /** Board size the plinth is carved for. */
+  n: number;
 }
 
-export const PLINTH_ISO: PlinthSpec = {
-  key: "plinth-iso",
-  width: 12 * TILE_W + 2 * PLINTH_MARGIN,
-  height: 12 * TILE_H + PLINTH_MARGIN + THICK + DROP,
-  anchorX: 6 * TILE_W + PLINTH_MARGIN,
-  anchorY: 6 * TILE_H + PLINTH_MARGIN / 2,
-};
+export const plinthIso = (n: number): PlinthSpec => ({
+  key: `plinth-iso-${n}`,
+  width: n * TILE_W + 2 * PLINTH_MARGIN,
+  height: n * TILE_H + PLINTH_MARGIN + THICK + DROP,
+  anchorX: (n / 2) * TILE_W + PLINTH_MARGIN,
+  anchorY: (n / 2) * TILE_H + PLINTH_MARGIN / 2,
+  n,
+});
 
-export const PLINTH_TOP: PlinthSpec = {
-  key: "plinth-top",
-  width: 12 * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
-  height: 12 * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
-  anchorX: 6 * TOP_TILE + PLINTH_MARGIN + DROP,
-  anchorY: 6 * TOP_TILE + PLINTH_MARGIN + DROP,
-};
+export const plinthTop = (n: number): PlinthSpec => ({
+  key: `plinth-top-${n}`,
+  width: n * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
+  height: n * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
+  anchorX: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
+  anchorY: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
+  n,
+});
 
-const STONE_LIT = "#8e8475";
-const STONE_DIM = "#5c5247";
-const GROOVE = "rgba(20,14,8,0.55)";
-const RIDGE = "rgba(255,240,215,0.22)";
+/** Specs for the Extended board, kept for callers that only need the default size. */
+export const PLINTH_ISO: PlinthSpec = plinthIso(12);
+export const PLINTH_TOP: PlinthSpec = plinthTop(12);
 
-const stoneFill = (g: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number): CanvasGradient => {
+export const plinthKey = (spec: PlinthSpec): string => `${spec.key}-${world.id}`;
+
+const stoneFill = (g: CanvasRenderingContext2D, m: PlinthMaterial, x0: number, y0: number, x1: number, y1: number): CanvasGradient => {
   const grad = g.createLinearGradient(x0, y0, x1, y1);
-  grad.addColorStop(0, STONE_LIT);
-  grad.addColorStop(1, STONE_DIM);
+  grad.addColorStop(0, m.lit);
+  grad.addColorStop(1, m.dim);
   return grad;
 };
 
@@ -55,10 +63,10 @@ const grain = (g: CanvasRenderingContext2D, count: number, seed: number, w: numb
   g.globalAlpha = 1;
 };
 
-const rosette = (g: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number): void => {
-  ellipse(g, x, y, rx, ry, GROOVE);
-  ellipse(g, x - rx * 0.1, y - ry * 0.15, rx * 0.65, ry * 0.65, "#7c7264");
-  ellipse(g, x, y, rx * 0.28, ry * 0.28, GROOVE);
+const rosette = (g: CanvasRenderingContext2D, m: PlinthMaterial, x: number, y: number, rx: number, ry: number): void => {
+  ellipse(g, x, y, rx, ry, m.groove);
+  ellipse(g, x - rx * 0.1, y - ry * 0.15, rx * 0.65, ry * 0.65, m.rosette);
+  ellipse(g, x, y, rx * 0.28, ry * 0.28, m.groove);
 };
 
 /** Shadow the tiles cast onto the margin: dark just outside the board edge, fading outward. */
@@ -72,9 +80,20 @@ const contactShadow = (g: CanvasRenderingContext2D, path: () => void): void => {
   g.restore();
 };
 
-const drawIso = (g: CanvasRenderingContext2D): void => {
-  const { anchorX: cx, anchorY: cy, width, height } = PLINTH_ISO;
-  const hw = 6 * TILE_W + PLINTH_MARGIN;
+/** Lit upper-left edges, dark lower-right, along a three-point path. */
+const bevel = (g: CanvasRenderingContext2D, lit: [number, number][], dark: [number, number][]): void => {
+  g.lineWidth = 2;
+  for (const [pts, color] of [[lit, "rgba(255,240,215,0.35)"], [dark, "rgba(0,0,0,0.45)"]] as const) {
+    g.strokeStyle = color;
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i === 0 ? g.moveTo(x, y) : g.lineTo(x, y)));
+    g.stroke();
+  }
+};
+
+const drawIso = (m: PlinthMaterial, spec: PlinthSpec) => (g: CanvasRenderingContext2D): void => {
+  const { anchorX: cx, anchorY: cy, width, height, n } = spec;
+  const hw = (n / 2) * TILE_W + PLINTH_MARGIN;
   const hh = hw / 2;
   // drop shadow onto the ground
   ellipse(g, cx, cy + hh * 0.35 + THICK, hw * 1.08, hh * 0.9 + THICK, "rgba(0,0,0,0.5)");
@@ -88,7 +107,7 @@ const drawIso = (g: CanvasRenderingContext2D): void => {
   g.lineTo(cx, cy + hh + THICK);
   g.lineTo(cx - hw, cy + THICK);
   g.closePath();
-  g.fillStyle = "#3f372f";
+  g.fillStyle = m.sideLeft;
   g.fill();
   g.beginPath();
   g.moveTo(cx + hw, cy);
@@ -96,17 +115,17 @@ const drawIso = (g: CanvasRenderingContext2D): void => {
   g.lineTo(cx, cy + hh + THICK);
   g.lineTo(cx + hw, cy + THICK);
   g.closePath();
-  g.fillStyle = "#564c42";
+  g.fillStyle = m.sideRight;
   g.fill();
   // chiselled band along the faces
-  g.strokeStyle = GROOVE;
+  g.strokeStyle = m.groove;
   g.lineWidth = 3;
   g.beginPath();
   g.moveTo(cx - hw, cy + THICK * 0.55);
   g.lineTo(cx, cy + hh + THICK * 0.55);
   g.lineTo(cx + hw, cy + THICK * 0.55);
   g.stroke();
-  g.strokeStyle = RIDGE;
+  g.strokeStyle = m.ridge;
   g.lineWidth = 1;
   g.beginPath();
   g.moveTo(cx - hw, cy + THICK * 0.55 + 3);
@@ -115,7 +134,7 @@ const drawIso = (g: CanvasRenderingContext2D): void => {
   g.stroke();
   // top face
   diamondPath(g, cx, cy, hw * 2, hh * 2);
-  g.fillStyle = stoneFill(g, cx - hw, cy - hh, cx + hw, cy + hh);
+  g.fillStyle = stoneFill(g, m, cx - hw, cy - hh, cx + hw, cy + hh);
   g.fill();
   g.save();
   diamondPath(g, cx, cy, hw * 2, hh * 2);
@@ -124,44 +143,31 @@ const drawIso = (g: CanvasRenderingContext2D): void => {
   // carved border grooves
   for (const inset of [12, 26]) {
     diamondPath(g, cx, cy + 1.5, (hw - inset) * 2, (hh - inset / 2) * 2);
-    g.strokeStyle = RIDGE;
+    g.strokeStyle = m.ridge;
     g.lineWidth = 1.5;
     g.stroke();
     diamondPath(g, cx, cy, (hw - inset) * 2, (hh - inset / 2) * 2);
-    g.strokeStyle = GROOVE;
+    g.strokeStyle = m.groove;
     g.lineWidth = 2;
     g.stroke();
   }
-  rosette(g, cx, cy - hh + 19, 9, 4.5);
-  rosette(g, cx, cy + hh - 19, 9, 4.5);
-  rosette(g, cx - hw + 38, cy, 9, 4.5);
-  rosette(g, cx + hw - 38, cy, 9, 4.5);
-  contactShadow(g, () => diamondPath(g, cx, cy, 12 * TILE_W + 6, 12 * TILE_H + 3));
+  rosette(g, m, cx, cy - hh + 19, 9, 4.5);
+  rosette(g, m, cx, cy + hh - 19, 9, 4.5);
+  rosette(g, m, cx - hw + 38, cy, 9, 4.5);
+  rosette(g, m, cx + hw - 38, cy, 9, 4.5);
+  contactShadow(g, () => diamondPath(g, cx, cy, n * TILE_W + 6, n * TILE_H + 3));
   g.restore();
-  // bevel highlights: lit upper-left edges, dark lower-right
-  g.lineWidth = 2;
-  g.strokeStyle = "rgba(255,240,215,0.35)";
-  g.beginPath();
-  g.moveTo(cx - hw, cy);
-  g.lineTo(cx, cy - hh);
-  g.lineTo(cx + hw, cy);
-  g.stroke();
-  g.strokeStyle = "rgba(0,0,0,0.45)";
-  g.beginPath();
-  g.moveTo(cx - hw, cy);
-  g.lineTo(cx, cy + hh);
-  g.lineTo(cx + hw, cy);
-  g.stroke();
+  bevel(g, [[cx - hw, cy], [cx, cy - hh], [cx + hw, cy]], [[cx - hw, cy], [cx, cy + hh], [cx + hw, cy]]);
 };
 
-const drawTop = (g: CanvasRenderingContext2D): void => {
-  const { anchorX: cx, anchorY: cy, width, height } = PLINTH_TOP;
-  const half = 6 * TOP_TILE + PLINTH_MARGIN;
+const drawTop = (m: PlinthMaterial, spec: PlinthSpec) => (g: CanvasRenderingContext2D): void => {
+  const { anchorX: cx, anchorY: cy, width, height, n } = spec;
+  const half = (n / 2) * TOP_TILE + PLINTH_MARGIN;
   g.filter = "blur(12px)";
   g.fillStyle = "rgba(0,0,0,0.6)";
   g.fillRect(cx - half + 10, cy - half + 14, half * 2 + 4, half * 2 + 6);
   g.filter = "none";
-  g.fillStyle = stoneFill(g, cx - half, cy - half, cx + half, cy + half);
+  g.fillStyle = stoneFill(g, m, cx - half, cy - half, cx + half, cy + half);
   g.fillRect(cx - half, cy - half, half * 2, half * 2);
   g.save();
   g.beginPath();
@@ -169,35 +175,31 @@ const drawTop = (g: CanvasRenderingContext2D): void => {
   g.clip();
   grain(g, 900, 78, width, height);
   for (const inset of [12, 26]) {
-    g.strokeStyle = RIDGE;
+    g.strokeStyle = m.ridge;
     g.lineWidth = 1.5;
     g.strokeRect(cx - half + inset, cy - half + inset + 1.5, (half - inset) * 2, (half - inset) * 2);
-    g.strokeStyle = GROOVE;
+    g.strokeStyle = m.groove;
     g.lineWidth = 2;
     g.strokeRect(cx - half + inset, cy - half + inset, (half - inset) * 2, (half - inset) * 2);
   }
-  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) rosette(g, cx + sx * (half - 19), cy + sy * (half - 19), 7, 7);
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) rosette(g, m, cx + sx * (half - 19), cy + sy * (half - 19), 7, 7);
   contactShadow(g, () => {
     g.beginPath();
-    g.rect(cx - 6 * TOP_TILE - 3, cy - 6 * TOP_TILE - 3, 12 * TOP_TILE + 6, 12 * TOP_TILE + 6);
+    g.rect(cx - (n / 2) * TOP_TILE - 3, cy - (n / 2) * TOP_TILE - 3, n * TOP_TILE + 6, n * TOP_TILE + 6);
   });
   g.restore();
-  g.lineWidth = 2;
-  g.strokeStyle = "rgba(255,240,215,0.35)";
-  g.beginPath();
-  g.moveTo(cx - half, cy + half);
-  g.lineTo(cx - half, cy - half);
-  g.lineTo(cx + half, cy - half);
-  g.stroke();
-  g.strokeStyle = "rgba(0,0,0,0.45)";
-  g.beginPath();
-  g.moveTo(cx + half, cy - half);
-  g.lineTo(cx + half, cy + half);
-  g.lineTo(cx - half, cy + half);
-  g.stroke();
+  bevel(g, [[cx - half, cy + half], [cx - half, cy - half], [cx + half, cy - half]], [[cx + half, cy - half], [cx + half, cy + half], [cx - half, cy + half]]);
 };
 
+export const PLINTH_SIZES = [8, 12];
+
+/** Paints both plinths of every board size for the active world; already-painted worlds are skipped. */
 export const paintPlinth = (scene: Phaser.Scene): void => {
-  paint(scene, PLINTH_ISO.key, PLINTH_ISO.width, PLINTH_ISO.height, drawIso);
-  paint(scene, PLINTH_TOP.key, PLINTH_TOP.width, PLINTH_TOP.height, drawTop);
+  const m = recipe().plinth;
+  for (const n of PLINTH_SIZES) {
+    const iso = plinthIso(n);
+    const top = plinthTop(n);
+    paint(scene, plinthKey(iso), iso.width, iso.height, drawIso(m, iso));
+    paint(scene, plinthKey(top), top.width, top.height, drawTop(m, top));
+  }
 };

@@ -34,7 +34,7 @@ export const STYLE_LABELS: Record<PieceStyle, string> = {
   clockwork: "Clockwork",
   origami: "Origami",
   pixel: "8-bit",
-  beasts: "Beasts",
+  beasts: "Toy Beasts",
 };
 export type PaletteId = "royal" | "ivory" | "verdant";
 
