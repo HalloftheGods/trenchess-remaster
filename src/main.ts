@@ -14,6 +14,7 @@ import { music } from "./audio/music";
 import { Backdrop } from "./render/backdrop/Backdrop";
 import { terrainStrip } from "./render/art/terrainStrip";
 import { bindViewControls } from "./ui/viewControls";
+import { loadBackdropMode, saveBackdropMode, type BackdropMode } from "./render/board/backdropMode";
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 
@@ -129,6 +130,10 @@ const bindFlow = (): void => {
   ev.on("ui:theme", ({ style, palette }: { style: PieceStyle; palette: PaletteId }) => setTheme(style, palette));
   ev.on("ui:start", (options: MatchOptions) => startMatch(options));
   ev.on("ui:back", toTitle);
+  ev.on("ui:backdrop", (mode: BackdropMode) => {
+    saveBackdropMode(mode);
+    scene.backdrop.setMode(mode);
+  });
   bindViewControls(game, () => scene, () => match.refresh(), lifetime.signal);
 };
 
@@ -181,6 +186,7 @@ const bindMusic = (): void => {
 const boot = (s: BattleScene): void => {
   scene = s;
   loadTheme();
+  s.backdrop.setMode(loadBackdropMode(), 0);
   paintUnits(s);
   hud = new Hud((type, owner) => s.textures.getBase64(unitKey(type, owner)), (t) => terrainStrip(s, t));
   match = new Match(s.board, s.units, hud);

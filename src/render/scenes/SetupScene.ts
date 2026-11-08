@@ -7,6 +7,7 @@ import { motionMs } from "../ui/fonts";
 import { Button, Carousel, Panel, Segmented, Toggle, heading } from "../ui/widgets";
 import { bindKeys } from "../ui/widgets/common";
 import { SetupRows } from "./setup/SetupRows";
+import { BACKDROP_CHOICES, backdrop, type BackdropMode } from "../board/backdropMode";
 import { BOARDS, COMMANDERS, MODES, OPPONENTS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES, loadOptions, saveOptions } from "./setup/choices";
 
 export const PANEL_W = 420;
@@ -74,6 +75,7 @@ export class SetupScene extends Phaser.Scene {
     const styleAt = Math.max(0, STYLE_CHOICES.findIndex((c) => c.id === theme.style));
     this.rows.row("Chessmen", new Carousel(this, 0, 0, INNER, STYLE_CHOICES, styleAt, (i) => this.setTheme(STYLE_CHOICES[i].id as PieceStyle, theme.palette)));
     this.rows.row("Colors", new Segmented(this, 0, 0, INNER, PALETTE_CHOICES, theme.palette, (id) => this.setTheme(theme.style, id as PaletteId)));
+    this.rows.row("Backdrop", new Segmented(this, 0, 0, INNER, BACKDROP_CHOICES, backdrop.mode, (id) => this.game.events.emit("ui:backdrop", id as BackdropMode)));
     this.rows.add(new Toggle(this, 0, 0, "Fog of war (forests hide the enemy)", this.options.fog, (v) => this.set({ fog: v })), 40);
     this.buttons();
   }

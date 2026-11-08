@@ -28,7 +28,7 @@ const dome = (g: CanvasRenderingContext2D, w: number, h: number): void => {
   // horizon haze band
   const haze = g.createLinearGradient(0, h * 0.78, 0, h);
   haze.addColorStop(0, "rgba(255,210,170,0)");
-  haze.addColorStop(1, "rgba(255,225,190,0.35)");
+  haze.addColorStop(1, "rgba(255,225,190,0.18)");
   g.fillStyle = haze;
   g.fillRect(0, h * 0.78, w, h * 0.22);
 };
