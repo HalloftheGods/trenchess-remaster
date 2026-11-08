@@ -1,10 +1,9 @@
 import Phaser from "phaser";
-import { reducedMotion } from "../ui/fonts";
 import { duels, type DuelHost, type DuelRequest } from "./duel";
 import { paintDuelFx } from "./duelFx";
 import { DuelRun } from "./duelRun";
 import { DuelStage } from "./DuelStage";
-import { playDuel, playStill, tempoOf } from "./duelTimeline";
+import { playDuel, tempoOf } from "./duelTimeline";
 
 /**
  * The capture cutscene: a full-screen 2D battle over the board. The letterbox closes, the two
@@ -12,7 +11,7 @@ import { playDuel, playStill, tempoOf } from "./duelTimeline";
  * performs its classic ability, the defender breaks apart and the victor poses. It runs two
  * cameras: the main one (world: zooms, shakes) and a steady one for the HUD. It stays idle
  * between duels; `play` queues requests so two captures in one order run in turn. Any key or
- * click skips to the result, and reduced-motion viewers see only the result.
+ * click skips to the result. It always plays in full, whatever the OS reduced-motion setting.
  */
 export class DuelScene extends Phaser.Scene implements DuelHost {
   private stage: DuelStage | null = null;
@@ -67,8 +66,7 @@ export class DuelScene extends Phaser.Scene implements DuelHost {
     this.stage = stage;
     this.run = run;
     try {
-      if (reducedMotion()) await playStill(stage);
-      else await playDuel({ s: stage, r: run });
+      await playDuel({ s: stage, r: run });
     } finally {
       this.stage = null;
       this.run = null;

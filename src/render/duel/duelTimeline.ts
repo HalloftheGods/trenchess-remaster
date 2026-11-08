@@ -113,7 +113,7 @@ const triumph = async (c: Ctx): Promise<void> => {
   await r.wait(r.full ? 1000 : 260);
 };
 
-/** The final picture of a duel, for reduced-motion viewers and after a skip: the victor alone. */
+/** The final picture of a duel after a skip: the victor alone. */
 export const showResult = (s: DuelStage): void => {
   s.setSpeed(1);
   s.stopTrails();
@@ -165,15 +165,4 @@ export const playDuel = async (c: Ctx): Promise<void> => {
   }
   const ms = r.full ? 420 : 280;
   await curtain(s, r.isSkipped ? 260 : ms);
-};
-
-/** Reduced motion: the result, held, then a plain fade. */
-export const playStill = async (s: DuelStage): Promise<void> => {
-  showResult(s);
-  await new Promise<void>((resolve) => s.scene.time.delayedCall(700, resolve));
-  await animate(s.scene, 160, (p) => {
-    s.world.setAlpha(1 - p);
-    s.ui.setAlpha(1 - p);
-  });
-  s.ui.setAlpha(1);
 };
