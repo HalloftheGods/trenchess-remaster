@@ -81,7 +81,7 @@ export class MediaPlayer extends Phaser.GameObjects.Container {
   }
 
   private onKey(e: KeyboardEvent): void {
-    if (e.repeat || !this.visible || this.alpha < 0.5) return;
+    if (e.repeat || !this.visible) return;
     if (e.code === "KeyM") this.toggleExpanded();
     else if (e.code === "Comma") music.prev();
     else if (e.code === "Period") music.next();

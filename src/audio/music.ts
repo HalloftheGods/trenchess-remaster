@@ -60,11 +60,15 @@ class Music {
   private sampledAt = 0;
   private level = storedVolume();
   private listeners = new Set<MusicListener>();
+  private held = false;
 
-  /** Starts (or resumes) the music for the current mood. Needs a user gesture to have happened. */
+  /**
+   * Starts (or resumes) the music for the current mood. Needs a user gesture to have happened.
+   * A pause made with `toggle()` holds: only another `toggle()` resumes it.
+   */
   start(): void {
     if (!this.ready()) return;
-    if (this.playing) return;
+    if (this.playing || this.held) return;
     this.resume();
   }
 
@@ -83,7 +87,8 @@ class Music {
   /** Pause / resume without a long fade, keeping the current track and position. */
   toggle(): void {
     if (!this.ready()) return;
-    if (this.playing) {
+    this.held = this.playing;
+    if (this.held) {
       this.element?.pause();
       this.score?.stop();
       this.changed();
