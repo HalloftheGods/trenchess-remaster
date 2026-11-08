@@ -1,17 +1,16 @@
 import Phaser from "phaser";
-import cartridgeUrl from "../../../assets/pwa/install-cartridge.png";
 import { installController } from "../../../pwa";
 import type { InstallState } from "../../../pwa/installController";
 import { guideFor, type GuideKind } from "../../../pwa/installOffer";
+import { paintCartridge } from "../../art/cartridgeArt";
 import { COLOR, TEXT, reducedMotion } from "../../ui/fonts";
 import { Button, Panel } from "../../ui/widgets";
 import { hoverSfx, pressSfx } from "../../ui/widgets/common";
 
 export const CARTRIDGE_KEY = "pwa-install-cartridge";
-export const CARTRIDGE_URL = cartridgeUrl;
 
 /** Display height of the cartridge in title-root units (the root scales with the screen). */
-const HEIGHT = 128;
+const HEIGHT = 140;
 const LIFT = 6;
 
 /**
@@ -29,6 +28,7 @@ export class InstallCartridge extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
+    paintCartridge(scene.textures, CARTRIDGE_KEY);
     this.shadow = scene.add.image(0, 4, CARTRIDGE_KEY).setTint(0x000000).setAlpha(0.45);
     this.art = scene.add.image(0, 0, CARTRIDGE_KEY);
     const s = HEIGHT / this.art.height;

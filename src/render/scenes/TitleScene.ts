@@ -9,7 +9,7 @@ import { Lockup, LOCKUP_BOTTOM, LOCKUP_TOP, LOGO_KEY } from "./title/Lockup";
 import { Footer } from "./title/Footer";
 import { Sequence } from "./title/sequence";
 import { MENU_ITEMS, previewOf } from "./title/menuItems";
-import { CARTRIDGE_KEY, CARTRIDGE_URL, InstallCartridge } from "./title/InstallCartridge";
+import { InstallCartridge } from "./title/InstallCartridge";
 import { setTitleShowing } from "../../pwa";
 
 const TOP = 90;
@@ -57,7 +57,6 @@ export class TitleScene extends Phaser.Scene {
   preload(): void {
     if (!this.textures.exists(LOGO_KEY)) this.load.image(LOGO_KEY, logoUrl);
     if (!this.textures.exists(OMEGA_KEY)) this.load.image(OMEGA_KEY, omegaUrl);
-    if (!this.textures.exists(CARTRIDGE_KEY)) this.load.image(CARTRIDGE_KEY, CARTRIDGE_URL);
   }
 
   create(): void {
