@@ -4,6 +4,7 @@ import { paintFx } from "./duelFx";
 import { DuelRun } from "./duelRun";
 import { DuelStage, pixelScale } from "./DuelStage";
 import { playDuel, tempoOf } from "./duelTimeline";
+import { veilHud } from "./hudVeil";
 import { SCREEN_H } from "./pixel/painter";
 
 /** Longest a duel may hold the board, in wall time, whatever goes wrong inside it. */
@@ -53,6 +54,7 @@ export class DuelScene extends Phaser.Scene implements DuelHost {
 
   private async show(req: DuelRequest): Promise<void> {
     this.scene.bringToTop();
+    veilHud(true);
     // A fresh screen per duel, sized for the window as it is now (a resized texture keeps its old buffer).
     const { lw } = pixelScale(this.scale.width, this.scale.height);
     const matte = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x05060a).setOrigin(0, 0).setVisible(false);
@@ -81,6 +83,7 @@ export class DuelScene extends Phaser.Scene implements DuelHost {
       stage.destroy();
       screen.destroy();
       matte.destroy();
+      veilHud(false);
     }
   }
 }
