@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "audit": "chemx audit"
+    "audit": "chemx audit",
+    "simulate": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/simulate.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"

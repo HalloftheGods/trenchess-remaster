@@ -11,7 +11,24 @@ npm install
 npm run dev      # http://localhost:5173
 npm test         # rules engine tests
 npm run build    # static build in dist/
+npm run simulate # headless AI-vs-AI games, stats by board size
 ```
+
+### Balance simulator
+
+`npm run simulate` plays AI-vs-AI games with the real engine and prints how
+games end (checkmate, king captured, desert, stalemate, bare kings, turn-cap
+timeout), how many full moves a win takes, and when the first capture lands,
+per board size and orders-per-turn. Board size is patched in at load time, so
+the engine is untouched. Examples:
+
+```bash
+npm run simulate -- --sizes 8,10,12,14,16 --games 24 --ai recruit
+npm run simulate -- --ai veteran --orders 1 --games 10 --json results.json
+npm run simulate -- --ai recruit:veteran --battlefield open
+```
+
+See the header of `scripts/simulate.ts` for every option. Needs Node 22+.
 
 ## How it plays
 
