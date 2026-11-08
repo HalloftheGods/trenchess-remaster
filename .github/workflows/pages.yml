@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+# Every push to main builds the game and publishes it to GitHub Pages, served at https://trenchess.forthexp.com
+# (the custom domain is set in the repository's Pages settings, so no CNAME file is needed here).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          # Online duels use play-api.forthexp.com unless the repository variable PLAY_API says otherwise
+          # (set it to a single space-free empty value via the API, or to another origin, to change that).
+          VITE_PLAY_API: ${{ vars.PLAY_API || 'https://play-api.forthexp.com' }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
