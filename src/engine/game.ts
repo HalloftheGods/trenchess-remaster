@@ -11,6 +11,7 @@ export const cloneState = (s: GameState): GameState => ({
   terrain: s.terrain,
   acted: s.acted.slice(),
   fallen: [s.fallen[0].slice(), s.fallen[1].slice()],
+  classicMoves: s.classicMoves,
 });
 
 export const createGame = (board: Cell[][], terrain: Terrain[][], config: GameConfig): GameState => ({
@@ -26,6 +27,7 @@ export const createGame = (board: Cell[][], terrain: Terrain[][], config: GameCo
   outcome: null,
   fallen: [[], []],
   nextId: 1000,
+  classicMoves: config.classicMoves ?? false,
 });
 
 const unitAt = (s: GameState, [r, c]: Pos): Cell => s.board[r][c];
@@ -33,7 +35,7 @@ const unitAt = (s: GameState, [r, c]: Pos): Cell => s.board[r][c];
 export const pseudoOrders = (s: GameState): Order[] => {
   const out: Order[] = [];
   forEachUnit(s.board, (u, pos) => {
-    if (u.owner === s.current && !s.acted.includes(u.id)) out.push(...pseudoMovesFor(s.board, s.terrain, pos));
+    if (u.owner === s.current && !s.acted.includes(u.id)) out.push(...pseudoMovesFor(s.board, s.terrain, pos, true, s.classicMoves));
   });
   return out;
 };
@@ -72,7 +74,7 @@ const isSecondOrder = (s: GameState): boolean => s.checkEndsTurn && s.turnStart 
 const withoutFirst = (s: GameState, order: Order): Order | null => {
   const start = s.turnStart!;
   const probe: GameState = { ...s, board: start.board.map((row) => row.slice()), acted: [], fallen: [start.fallen[0].slice(), start.fallen[1].slice()] };
-  const twin = pseudoMovesFor(probe.board, s.terrain, order.from).find((o) => o.to[0] === order.to[0] && o.to[1] === order.to[1]);
+  const twin = pseudoMovesFor(probe.board, s.terrain, order.from, true, s.classicMoves).find((o) => o.to[0] === order.to[0] && o.to[1] === order.to[1]);
   return twin && leavesKingSafe(probe, twin) ? twin : null;
 };
 

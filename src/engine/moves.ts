@@ -15,6 +15,7 @@ interface Ctx {
   from: Pos;
   out: Order[];
   guard: boolean;
+  classicMoves: boolean;
 }
 
 const makeOrder = (ctx: Ctx, to: Pos, style: MoveStyle, captures: Pos[], path: Pos[]): Order => ({
@@ -65,7 +66,8 @@ const isGuarded = (ctx: Ctx, [r, c]: Pos): boolean => {
   const probe = ctx.board.map((row) => row.slice());
   probe[ctx.from[0]][ctx.from[1]] = null;
   probe[r][c] = { ...ctx.unit, type: "pawn" };
-  return isAttacked(probe, ctx.terrain, [r, c], ctx.unit.owner === 0 ? 1 : 0, false);
+  const opponentOwner = ctx.unit.owner === 0 ? 1 : 0;
+  return isAttacked(probe, ctx.terrain, [r, c], opponentOwner, false, ctx.classicMoves);
 };
 
 const joust = (ctx: Ctx): void => {
@@ -101,39 +103,41 @@ const pawnMoves = (ctx: Ctx): void => {
   if (!ctx.unit.moved && pathClear) tryMove(r0 + 2 * f, c0, "jump");
   tryCapture(r0 + f, c0 + 1, "step");
   tryCapture(r0 + f, c0 - 1, "step");
-  tryMove(r0 - 2 * f, c0, "flip");
-  tryCapture(r0 - 2 * f, c0 + 1, "flip");
-  tryCapture(r0 - 2 * f, c0 - 1, "flip");
+  if (!ctx.classicMoves) {
+    tryMove(r0 - 2 * f, c0, "flip");
+    tryCapture(r0 - 2 * f, c0 + 1, "flip");
+    tryCapture(r0 - 2 * f, c0 - 1, "flip");
+  }
 };
 
 const GENERATORS: Record<Unit["type"], (ctx: Ctx) => void> = {
   pawn: pawnMoves,
   knight: (ctx) => {
     leap(ctx, KNIGHT, "jump");
-    leap(ctx, scale(ORTHO, 3), "jump");
+    if (!ctx.classicMoves) leap(ctx, scale(ORTHO, 3), "jump");
   },
   bishop: (ctx) => {
     slide(ctx, DIAG);
-    leap(ctx, scale(ORTHO, 2), "jump");
+    if (!ctx.classicMoves) leap(ctx, scale(ORTHO, 2), "jump");
   },
   rook: (ctx) => {
     slide(ctx, ORTHO);
-    leap(ctx, DIAG, "step");
+    if (!ctx.classicMoves) leap(ctx, DIAG, "step");
   },
   queen: (ctx) => {
     slide(ctx, [...ORTHO, ...DIAG]);
-    leap(ctx, KNIGHT, "jump");
+    if (!ctx.classicMoves) leap(ctx, KNIGHT, "jump");
   },
   king: (ctx) => {
     leap(ctx, [...ORTHO, ...DIAG], "step");
-    joust(ctx);
+    if (!ctx.classicMoves) joust(ctx);
   },
 };
 
-export const pseudoMovesFor = (board: Cell[][], terrain: Terrain[][], from: Pos, guard = true): Order[] => {
+export const pseudoMovesFor = (board: Cell[][], terrain: Terrain[][], from: Pos, guard = true, classicMoves = false): Order[] => {
   const unit = board[from[0]][from[1]];
   if (!unit) return [];
-  const ctx: Ctx = { board, terrain, unit, from, out: [], guard };
+  const ctx: Ctx = { board, terrain, unit, from, out: [], guard, classicMoves };
   GENERATORS[unit.type](ctx);
   return ctx.out;
 };
@@ -150,16 +154,17 @@ export const findKing = (board: Cell[][], player: PlayerId): Pos | null => {
   return found;
 };
 
-export const isAttacked = (board: Cell[][], terrain: Terrain[][], target: Pos, by: PlayerId, guard = false): boolean => {
+export const isAttacked = (board: Cell[][], terrain: Terrain[][], target: Pos, by: PlayerId, guard = false, classicMoves = false): boolean => {
   const hits = (o: Order) => o.captures.some(([r, c]) => r === target[0] && c === target[1]);
   let attacked = false;
   forEachUnit(board, (u, pos) => {
-    if (!attacked && u.owner === by) attacked = pseudoMovesFor(board, terrain, pos, guard).some(hits);
+    if (!attacked && u.owner === by) attacked = pseudoMovesFor(board, terrain, pos, guard, classicMoves).some(hits);
   });
   return attacked;
 };
 
-export const isInCheck = (state: Pick<GameState, "board" | "terrain">, player: PlayerId): boolean => {
+export const isInCheck = (state: Pick<GameState, "board" | "terrain"> & { classicMoves?: boolean }, player: PlayerId): boolean => {
   const king = findKing(state.board, player);
-  return king !== null && isAttacked(state.board, state.terrain, king, player === 0 ? 1 : 0);
+  const by = player === 0 ? 1 : 0;
+  return king !== null && isAttacked(state.board, state.terrain, king, by, false, Boolean(state.classicMoves));
 };

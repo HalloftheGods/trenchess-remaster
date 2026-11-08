@@ -49,7 +49,8 @@ See the header of `scripts/simulate.ts` for every option. Needs Node 22+.
   1 diagonal), Light Seer (Leap of Faith: 2 straight), Shadow Knight
   (Triple-Bar Jump: 3 straight), Nimbus Jumper (Double-back Flip: 2 back).
 - **Modes:** Ω Omega (build everything), χ Chi (terrain generated, you arrange
-  pieces), π Pi (classic formation, random terrain), α Alpha (all random).
+  pieces), π Pi (classic formation, random terrain), α Alpha (all random),
+  τ Tau (pure classic chess on an 8x8 board with traditional rules).
 - **View:** Q/E rotate the board, T cycles piece styles (Figurines, Chessmen,
   Crystal, Bold glyphs), plus three color sets.
 - **Victory:** capture or checkmate the enemy king.

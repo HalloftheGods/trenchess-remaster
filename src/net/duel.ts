@@ -26,7 +26,7 @@ export type DuelPacket =
   | { t: "rematch" };
 
 const MAX_PACKET_BYTES = 64 * 1024;
-const MODES: readonly GameMode[] = ["omega", "chi", "pi", "alpha"];
+const MODES: readonly GameMode[] = ["omega", "chi", "pi", "alpha", "tau"];
 const BOARDS: readonly BoardKind[] = ["classic", "extended"];
 const TERRAINS: readonly Terrain[] = ["flat", "forest", "swamp", "mountain", "desert"];
 

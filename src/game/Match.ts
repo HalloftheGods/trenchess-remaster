@@ -85,11 +85,13 @@ export class Match {
 
   /** Live setup preview: the board a match with these options would start on. Fresh seed every call. */
   preview(options: MatchOptions): void {
-    setBoard(options.board);
+    const board = options.mode === "tau" ? "classic" : options.board;
+    setBoard(board);
     const field = buildField(options, freshSeed());
     this.show(field);
     if (!options.fog) return;
-    const grid = visibleCells(createGame(field.board, field.terrain, { ordersPerTurn: options.ordersPerTurn }), 0);
+    const classicMoves = options.mode === "tau";
+    const grid = visibleCells(createGame(field.board, field.terrain, { ordersPerTurn: options.ordersPerTurn, classicMoves }), 0);
     this.boardView.setFog(grid);
     this.units.setVisibility((pos, u) => u.owner === 0 || grid[pos[0]][pos[1]], field.board);
   }
@@ -109,15 +111,18 @@ export class Match {
   }
 
   start(options: MatchOptions, seed: number = freshSeed()): void {
-    this.options = options;
-    setBoard(options.board);
-    this.show(buildField(options, seed));
+    const isClassicOnly = options.mode === "tau";
+    const effectiveBoard = isClassicOnly ? "classic" : options.board;
+    this.options = { ...options, board: effectiveBoard };
+    setBoard(effectiveBoard);
+    this.show(buildField(this.options, seed));
     this.state = null;
     this.phase = "deploy";
     this.deployer = 0;
     this.tool = "units";
     this.selected = null;
-    if (options.mode === "pi" || options.mode === "alpha") return this.beginBattle();
+    const skipsDeploy = options.mode === "pi" || options.mode === "alpha" || isClassicOnly;
+    if (skipsDeploy) return this.beginBattle();
     this.refreshDeploy();
   }
 
@@ -230,7 +235,8 @@ export class Match {
       randomTerrainFor(this.board, this.terrain, 1, seededRng(freshSeed()));
       this.boardView.setTerrain(this.terrain);
     }
-    this.state = createGame(this.board, this.terrain, { ordersPerTurn: this.options.ordersPerTurn });
+    const classicMoves = this.options.mode === "tau";
+    this.state = createGame(this.board, this.terrain, { ordersPerTurn: this.options.ordersPerTurn, classicMoves });
     this.phase = "battle";
     this.boardView.clearMarkers();
     this.hud.showDeploy(false);
@@ -275,7 +281,7 @@ export class Match {
       return;
     }
     if (!unit || unit.owner === s.current || !this.isHuman(s.current)) return;
-    const reach = pseudoMovesFor(s.board, s.terrain, cell).map((o) => o.to);
+    const reach = pseudoMovesFor(s.board, s.terrain, cell, true, s.classicMoves).map((o) => o.to);
     this.boardView.showPreview(reach, "danger", 0.35);
   }
 

@@ -3,12 +3,13 @@ import { PRESETS } from "../../../engine/presets";
 import { PALETTES, STYLE_LABELS, STYLE_ORDER, type PaletteId } from "../../art/unitArt";
 import type { MatchOptions } from "../../../game/Match";
 
-/** The four classic setup modes with their taglines. */
+/** The five setup modes with their taglines. */
 export const MODES: Choice[] = [
   { id: "omega", label: "Ω Omega", hint: "Lay every tile and place every chessman yourself." },
   { id: "chi", label: "χ Chi", hint: "Pick a named battlefield, then arrange your army." },
   { id: "pi", label: "π Pi", hint: "Classic formation on a randomly shaped battlefield." },
   { id: "alpha", label: "α Alpha", hint: "Random terrain and random formations. Chaos reigns." },
+  { id: "tau", label: "τ Tau", hint: "Pure classic chess on an 8×8 board with traditional rules." },
 ];
 
 export const BOARDS: Choice[] = [

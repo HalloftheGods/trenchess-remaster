@@ -40,12 +40,13 @@ export interface WizardCtx {
 const cards = (choices: typeof MODES, glyphs: string[], hints: Record<string, string>): CardChoice[] =>
   choices.map((c, i) => ({ ...c, glyph: glyphs[i] ?? "•", hint: hints[c.id] ?? c.hint ?? "" }));
 
-export const MODE_CARDS: CardChoice[] = cards(MODES, ["Ω", "χ", "π", "α"], {
+export const MODE_CARDS: CardChoice[] = cards(MODES, ["Ω", "χ", "π", "α", "τ"], {
   omega: "Lay every tile and place every chessman.",
   chi: "Pick a named battlefield, then arrange your army.",
   pi: "Classic formation, random battlefield.",
   alpha: "Random terrain, random formations.",
-}).map((c) => ({ ...c, label: c.label.replace(/^[Ωχπα] /, "") }));
+  tau: "Pure classic chess, 8×8 board.",
+}).map((c) => ({ ...c, label: c.label.replace(/^[Ωχπατ] /, "") }));
 export const BOARD_CARDS: CardChoice[] = cards(BOARDS, ["XII", "VIII"], {
   extended: "The full Trench, 16 tiles a side.",
   classic: "The classic chessboard, 8 a side.",

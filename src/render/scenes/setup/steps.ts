@@ -6,7 +6,7 @@ import { WORLD_LABELS, WORLD_ORDER, WORLD_TAGLINES, world } from "../../art/worl
 import { BACKDROP_CHOICES, backdrop, type BackdropMode } from "../../board/backdropMode";
 import type { DuelMode } from "../../duel/duel";
 import { Carousel, Segmented, Toggle } from "../../ui/widgets";
-import { ChoiceCards } from "../../ui/widgets/ChoiceCards";
+import { ChoiceCards, type CardChoice } from "../../ui/widgets/ChoiceCards";
 import { COMMANDERS, DUELS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES } from "./choices";
 import { OnlinePanel } from "./OnlinePanel";
 import { SetupRows } from "./SetupRows";
@@ -28,7 +28,13 @@ const presetIndex = (options: MatchOptions): number => Math.max(0, PRESET_CHOICE
 const battle = (ctx: WizardCtx, rows: SetupRows): void => {
   const { scene, options, inner } = ctx;
   rows.row("Mode", new ChoiceCards(scene, 0, 0, inner, MODE_CARDS, options.mode, 2, CARD_H, (id) => {
-    ctx.set({ mode: id as MatchOptions["mode"] });
+    const nextMode = id as MatchOptions["mode"];
+    const patch: Partial<MatchOptions> = { mode: nextMode };
+    if (nextMode === "tau") {
+      patch.board = "classic";
+      patch.ordersPerTurn = 1;
+    }
+    ctx.set(patch);
     ctx.refresh();
   }));
   if (options.mode === "chi") {
@@ -36,9 +42,16 @@ const battle = (ctx: WizardCtx, rows: SetupRows): void => {
   }
 };
 
+const disableExtended = (c: CardChoice): CardChoice => {
+  if (c.id !== "extended") return c;
+  return { ...c, disabled: true, hint: "Unavailable in Tau classic chess" };
+};
+
 const board = (ctx: WizardCtx, rows: SetupRows): void => {
   const { scene, options, inner } = ctx;
-  rows.row("Board", new ChoiceCards(scene, 0, 0, inner, BOARD_CARDS, options.board, 2, CARD_H, (id) => ctx.set({ board: id as MatchOptions["board"] })));
+  const isTau = options.mode === "tau";
+  const boardChoices = isTau ? BOARD_CARDS.map(disableExtended) : BOARD_CARDS;
+  rows.row("Board", new ChoiceCards(scene, 0, 0, inner, boardChoices, options.board, 2, CARD_H, (id) => ctx.set({ board: id as MatchOptions["board"] })));
   const worldAt = Math.max(0, WORLD_ORDER.indexOf(world.id));
   rows.row("World", new Carousel(scene, 0, 0, inner, WORLD_CHOICES, worldAt, (i) => ctx.emit("ui:world", WORLD_CHOICES[i].id)));
   rows.row("Backdrop", new Segmented(scene, 0, 0, inner, BACKDROP_CHOICES, backdrop.mode, (id) => ctx.emit("ui:backdrop", id as BackdropMode)));

@@ -4,7 +4,7 @@ import { createArmies, randomBattlefield, randomFormation, seededRng } from "../
 import { PRESETS, presetById } from "../engine/presets";
 import { BOARD_SIZE } from "../engine/rules";
 
-export type GameMode = "omega" | "chi" | "pi" | "alpha";
+export type GameMode = "omega" | "chi" | "pi" | "alpha" | "tau";
 
 export interface Field {
   board: Cell[][];
@@ -41,7 +41,7 @@ export const scatteredField = (seed: number): Field => {
 
 /** The board and terrain a match (or its live preview) begins with, for the chosen mode. Chi presets are 12×12, so a Classic board gets a random battlefield. */
 export const buildField = (options: FieldOptions, seed: number): Field => {
-  if (options.mode === "omega") return plainsField();
+  if (options.mode === "omega" || options.mode === "tau") return plainsField();
   if (options.mode === "chi" && BOARD_SIZE === 12) return presetField(options.preset, seed);
   if (options.mode === "alpha") return scatteredField(seed);
   return randomBattlefield(seed);

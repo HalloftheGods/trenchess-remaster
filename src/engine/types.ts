@@ -58,6 +58,8 @@ export interface GameState {
   outcome: Outcome | null;
   fallen: Unit[][];
   nextId: number;
+  /** When true, pieces only have classic chess moves (no backflips, jousts, knight gallops). */
+  classicMoves?: boolean;
 }
 
 export interface TurnStart {
@@ -69,4 +71,5 @@ export interface GameConfig {
   ordersPerTurn: number;
   /** Defaults to true. */
   checkEndsTurn?: boolean;
+  classicMoves?: boolean;
 }
