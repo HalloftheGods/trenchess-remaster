@@ -7,6 +7,7 @@ import { TitleScene } from "./render/scenes/TitleScene";
 import { SetupScene } from "./render/scenes/SetupScene";
 import { OverlayScene } from "./render/scenes/OverlayScene";
 import { Match, type MatchOptions } from "./game/Match";
+import type { OnlineStart } from "./net/onlineMatch";
 import { Hud } from "./ui/Hud";
 import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
 import { sfx } from "./audio/sfx";
@@ -98,7 +99,7 @@ const openPanel = (name: "hello" | "educate"): void => {
   if (name === "educate") chessmen.render();
 };
 
-const startMatch = (options: MatchOptions): void => {
+const startMatch = (options: MatchOptions, online?: OnlineStart): void => {
   lastOptions = options;
   $("#over").classList.add("hidden");
   scene.setDrift(false);
@@ -107,7 +108,8 @@ const startMatch = (options: MatchOptions): void => {
   overlay().setShown(true);
   hud.show(true);
   hud.clearLog();
-  match.start(options);
+  if (online) match.startOnline(online.options, online.duel, online.seed);
+  else match.start(options);
   music.setMood("battle");
   if (match.phase === "deploy") hud.banner("Deployment", match.terrainLocked ? "The Trench is laid. Position your army." : "Shape the battlefield and position your army");
 };
@@ -129,6 +131,7 @@ const bindFlow = (): void => {
   ev.on("ui:setup-changed", (options: MatchOptions) => match.preview(options));
   ev.on("ui:theme", ({ style, palette }: { style: PieceStyle; palette: PaletteId }) => setTheme(style, palette));
   ev.on("ui:start", (options: MatchOptions) => startMatch(options));
+  ev.on("ui:start-online", (start: OnlineStart) => startMatch(start.options, start));
   ev.on("ui:back", toTitle);
   ev.on("ui:backdrop", (mode: BackdropMode) => {
     saveBackdropMode(mode);
@@ -145,7 +148,11 @@ const bindUi = (): void => {
     "end-turn": () => void match.endTurnNow(),
     menu: toTitle,
     "to-menu": toTitle,
-    again: () => lastOptions && startMatch(lastOptions),
+    // An online rematch needs a new room, so it goes back to setup.
+    again: () => {
+      if (lastOptions?.opponent === "online") openSetup();
+      else if (lastOptions) startMatch(lastOptions);
+    },
     "rotate-left": () => game.events.emit("ui:view", { action: "rotate", delta: -1 }),
     "rotate-right": () => game.events.emit("ui:view", { action: "rotate", delta: 1 }),
     style: nextStyle,
@@ -170,7 +177,8 @@ const bindUi = (): void => {
       match.cancel();
       if (!$("#panels").classList.contains("hidden")) toTitle();
     }
-    if (e.code === "KeyT") nextStyle();
+    // T is a room code letter, so it only cycles styles outside the setup panel.
+    if (e.code === "KeyT" && !game.scene.isActive("setup")) nextStyle();
   }, { signal: lifetime.signal });
 };
 
