@@ -132,6 +132,7 @@ const openPanel = (name: "educate"): void => {
 const startMatch = (options: MatchOptions, online?: OnlineStart): void => {
   lastOptions = options;
   $("#over").classList.add("hidden");
+  for (const key of ["setup", "hello"]) if (game.scene.isActive(key)) game.scene.stop(key);
   scene.setDrift(false);
   scene.view.setDiorama(false);
   scene.view.frame("center");
