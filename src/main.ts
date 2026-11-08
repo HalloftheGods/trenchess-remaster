@@ -1,35 +1,32 @@
 import Phaser from "phaser";
 import "./style.css";
-import logoUrl from "./assets/trenchess-logo.webp";
 import { Chessmen } from "./ui/Chessmen";
 import { BattleScene } from "./render/scenes/BattleScene";
+import { SplashScene } from "./render/scenes/SplashScene";
+import { TitleScene } from "./render/scenes/TitleScene";
+import { SetupScene } from "./render/scenes/SetupScene";
+import { OverlayScene } from "./render/scenes/OverlayScene";
 import { Match, type MatchOptions } from "./game/Match";
 import { Hud } from "./ui/Hud";
 import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
-import { getRotation, setRotation } from "./render/iso";
 import { sfx } from "./audio/sfx";
 import { music } from "./audio/music";
 import { Backdrop } from "./render/backdrop/Backdrop";
 import { terrainStrip } from "./render/art/terrainStrip";
-import type { Difficulty } from "./engine/ai";
+import { bindViewControls } from "./ui/viewControls";
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 
+let game: Phaser.Game;
 let match: Match;
 let scene: BattleScene;
+let hud: Hud;
+let chessmen: Chessmen;
 let lastOptions: MatchOptions | null = null;
+const lifetime = new AbortController();
 
-const readOptions = (form: HTMLFormElement): MatchOptions => {
-  const data = new FormData(form);
-  return {
-    opponent: data.get("opponent") as MatchOptions["opponent"],
-    difficulty: data.get("difficulty") as Difficulty,
-    ordersPerTurn: Number(data.get("orders")),
-    mode: data.get("mode") as MatchOptions["mode"],
-    fog: data.get("fog") === "on",
-    board: data.get("board") === "classic" ? "classic" : "extended",
-  };
-};
+const title = (): TitleScene => game.scene.getScene("title") as TitleScene;
+const overlay = (): OverlayScene => game.scene.getScene("overlay") as OverlayScene;
 
 const saveTheme = (): void => {
   try {
@@ -55,41 +52,9 @@ const setTheme = (style: PieceStyle, palette: PaletteId): void => {
   hud.refreshTheme();
   match.refresh();
   saveTheme();
-  const form = document.querySelector<HTMLFormElement>("#setup");
-  form?.querySelector<HTMLInputElement>(`input[name=style][value=${style}]`)?.click();
-  form?.querySelector<HTMLInputElement>(`input[name=palette][value=${palette}]`)?.click();
 };
 
-const rotateView = (delta: number): void => {
-  setRotation(getRotation() + delta);
-  scene.board.clearMarkers();
-  scene.board.clearPreview();
-  scene.board.relayout(420);
-  scene.units.relayout(match.liveBoard, 420);
-  window.setTimeout(() => match.refresh(), 440);
-};
-
-const showScreen = (id: "title" | "over" | null): void => {
-  $("#title").classList.toggle("hidden", id !== "title");
-  $("#over").classList.toggle("hidden", id !== "over");
-};
-
-const startMatch = (options: MatchOptions): void => {
-  lastOptions = options;
-  showScreen(null);
-  scene.setDrift(false);
-  hud.show(true);
-  hud.clearLog();
-  match.start(options);
-  music.setMood("battle");
-  if (match.phase === "deploy") hud.banner("Deployment", match.terrainLocked ? "The Trench is laid. Position your army." : "Shape the battlefield and position your army");
-};
-
-const openPanel = (name: string | null): void => {
-  $("#menu").classList.toggle("hidden", name !== null);
-  document.querySelectorAll<HTMLElement>(".panel").forEach((p) => p.classList.toggle("hidden", p.dataset.panel !== name));
-  if (name === "educate") chessmen.render();
-};
+const nextStyle = (): void => setTheme(STYLE_ORDER[(STYLE_ORDER.indexOf(theme.style) + 1) % STYLE_ORDER.length], theme.palette);
 
 const PREVIEWS: Record<string, () => void> = {
   terrain: () => match.showcase(Math.floor(Math.random() * 1e6)),
@@ -97,66 +62,88 @@ const PREVIEWS: Record<string, () => void> = {
   land: () => match.showcaseLand(Math.floor(Math.random() * 1e6)),
 };
 
-const bindMenu = (): void => {
-  const form = $<HTMLFormElement>("#setup");
-  document.querySelectorAll<HTMLElement>(".card").forEach((card) => {
-    card.addEventListener("click", () => {
-      sfx.select();
-      const panel = card.dataset.panel ?? null;
-      if (panel === "lay") {
-        form.querySelector<HTMLInputElement>("input[name=mode][value=omega]")!.checked = true;
-        return openPanel("play");
-      }
-      openPanel(panel);
-    }, { signal: lifetime.signal });
-    card.addEventListener("mouseenter", () => PREVIEWS[card.dataset.preview ?? ""]?.(), { signal: lifetime.signal });
-  });
-  document.querySelectorAll<HTMLElement>("[data-back]").forEach((b) =>
-    b.addEventListener("click", () => openPanel(null), { signal: lifetime.signal }),
-  );
-};
-
-const toMenu = (): void => {
+/** Back to the title menu from anywhere: the title scene wakes and replays its menu slide-in. */
+const toTitle = (): void => {
   match.quit();
   music.setMood("title");
   hud.show(false);
-  showScreen("title");
-  openPanel(null);
-  match.showcase(Math.floor(Math.random() * 1e6));
+  $("#over").classList.add("hidden");
+  $("#panels").classList.add("hidden");
+  overlay().setShown(false);
+  scene.view.setDiorama(true);
+  scene.view.frame("center");
   scene.setDrift(true);
+  if (game.scene.isSleeping("title")) {
+    game.scene.wake("title");
+    title().reenter();
+  } else if (!game.scene.isActive("title")) {
+    game.scene.start("title");
+  }
 };
 
-let hud: Hud;
-let chessmen: Chessmen;
+const openSetup = (mode?: MatchOptions["mode"]): void => {
+  game.scene.sleep("title");
+  scene.setDrift(false);
+  scene.view.setDiorama(false);
+  scene.view.frame("setup");
+  overlay().setShown(true);
+  game.scene.start("setup", { mode });
+};
 
-const lifetime = new AbortController();
+const openPanel = (name: "hello" | "educate"): void => {
+  game.scene.sleep("title");
+  $("#panels").classList.remove("hidden");
+  document.querySelectorAll<HTMLElement>(".panel").forEach((p) => p.classList.toggle("hidden", p.dataset.panel !== name));
+  if (name === "educate") chessmen.render();
+};
+
+const startMatch = (options: MatchOptions): void => {
+  lastOptions = options;
+  $("#over").classList.add("hidden");
+  scene.setDrift(false);
+  scene.view.setDiorama(false);
+  scene.view.frame("center");
+  overlay().setShown(true);
+  hud.show(true);
+  hud.clearLog();
+  match.start(options);
+  music.setMood("battle");
+  if (match.phase === "deploy") hud.banner("Deployment", match.terrainLocked ? "The Trench is laid. Position your army." : "Shape the battlefield and position your army");
+};
+
+const bindFlow = (): void => {
+  const ev = game.events;
+  ev.on("ui:splash-done", () => {
+    match.showcase(7);
+    scene.view.setDiorama(true);
+    scene.setDrift(true);
+    game.scene.start("title");
+  });
+  ev.on("ui:preview", (kind: string) => PREVIEWS[kind]?.());
+  ev.on("ui:open", (page: string) => {
+    if (page === "play") openSetup();
+    if (page === "lay") openSetup("omega");
+    if (page === "hello" || page === "educate") openPanel(page);
+  });
+  ev.on("ui:setup-changed", (options: MatchOptions) => match.preview(options));
+  ev.on("ui:theme", ({ style, palette }: { style: PieceStyle; palette: PaletteId }) => setTheme(style, palette));
+  ev.on("ui:start", (options: MatchOptions) => startMatch(options));
+  ev.on("ui:back", toTitle);
+  bindViewControls(game, () => scene, () => match.refresh(), lifetime.signal);
+};
 
 const bindUi = (): void => {
-  const form = $<HTMLFormElement>("#setup");
-  const syncDifficulty = () => $("#difficulty-set").classList.toggle("dim", readOptions(form).opponent === "hotseat");
-  form.addEventListener("change", syncDifficulty, { signal: lifetime.signal });
-  form.addEventListener("change", () => {
-    const data = new FormData(form);
-    const style = data.get("style") as PieceStyle;
-    const palette = data.get("palette") as PaletteId;
-    if (style !== theme.style || palette !== theme.palette) setTheme(style, palette);
-  }, { signal: lifetime.signal });
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    sfx.select();
-    startMatch(readOptions(form));
-  }, { signal: lifetime.signal });
   const actions: Record<string, () => void> = {
     randomize: () => match.randomizeTerrain(),
     clear: () => match.clearTerrain(),
     ready: () => match.ready(),
     "end-turn": () => void match.endTurnNow(),
-    menu: toMenu,
-    "to-menu": toMenu,
+    menu: toTitle,
+    "to-menu": toTitle,
     again: () => lastOptions && startMatch(lastOptions),
-    "rotate-left": () => rotateView(-1),
-    "rotate-right": () => rotateView(1),
-    style: () => setTheme(STYLE_ORDER[(STYLE_ORDER.indexOf(theme.style) + 1) % STYLE_ORDER.length], theme.palette),
+    "rotate-left": () => game.events.emit("ui:view", { action: "rotate", delta: -1 }),
+    "rotate-right": () => game.events.emit("ui:view", { action: "rotate", delta: 1 }),
+    style: nextStyle,
     sound: () => {
       sfx.muted = !sfx.muted;
       $("[data-act=sound]").textContent = sfx.muted ? "🔇" : "🔊";
@@ -167,16 +154,18 @@ const bindUi = (): void => {
   document.addEventListener("click", (e) => {
     const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]")?.dataset.act;
     if (act && actions[act]) actions[act]();
+    if ((e.target as HTMLElement).closest("[data-back]")) toTitle();
   }, { signal: lifetime.signal });
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space" && match.phase === "battle") {
       e.preventDefault();
       void match.endTurnNow();
     }
-    if (e.code === "Escape") match.cancel();
-    if (e.code === "KeyQ") rotateView(-1);
-    if (e.code === "KeyE") rotateView(1);
-    if (e.code === "KeyT") setTheme(STYLE_ORDER[(STYLE_ORDER.indexOf(theme.style) + 1) % STYLE_ORDER.length], theme.palette);
+    if (e.code === "Escape") {
+      match.cancel();
+      if (!$("#panels").classList.contains("hidden")) toTitle();
+    }
+    if (e.code === "KeyT") nextStyle();
   }, { signal: lifetime.signal });
 };
 
@@ -196,7 +185,6 @@ const boot = (s: BattleScene): void => {
   hud = new Hud((type, owner) => s.textures.getBase64(unitKey(type, owner)), (t) => terrainStrip(s, t));
   match = new Match(s.board, s.units, hud);
   chessmen = new Chessmen($(".panel[data-panel=educate] .chessmen"), (type, owner) => s.textures.getBase64(unitKey(type, owner)));
-  $<HTMLImageElement>(".brand-icon").src = logoUrl;
   hud.bindDeploy(match, () => undefined);
   match.showcase(7);
   Object.assign(window, {
@@ -210,21 +198,24 @@ const boot = (s: BattleScene): void => {
     },
   });
   bindUi();
-  bindMenu();
+  bindFlow();
   bindMusic();
   setTheme(theme.style, theme.palette);
-  showScreen("title");
+  game.scene.add("overlay", OverlayScene, true);
+  game.scene.add("title", TitleScene, false);
+  game.scene.add("setup", SetupScene, false);
+  game.scene.add("splash", SplashScene, true);
 };
 
-new Phaser.Game({
+game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: "stage",
   transparent: true,
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
   scene: [],
   callbacks: {
-    postBoot: (game) => {
-      game.scene.add("battle", BattleScene, true, {
+    postBoot: (g) => {
+      g.scene.add("battle", BattleScene, true, {
         ready: boot,
         click: (cell: [number, number]) => match?.click(cell),
         cancel: () => match?.cancel(),

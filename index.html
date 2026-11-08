@@ -11,101 +11,24 @@
     <canvas id="backdrop" aria-hidden="true"></canvas>
     <div id="stage"></div>
 
-    <section id="title" class="screen title-screen">
-      <div class="title-wrap">
-        <header class="brand">
-          <img class="brand-icon" alt="Trenchess logo" />
-          <div class="equation">
-            <div class="eq-top">Chess</div>
-            <div class="eq-plus">+<span class="badge t-forest" title="Forests">🌲</span><span class="badge t-swamp" title="Swamps">≋</span><span class="badge t-mountain" title="Mountains">▲</span><span class="badge t-desert" title="Deserts">☀</span></div>
-            <div class="eq-rule"></div>
-            <div class="eq-result"><span class="tren">Tren</span><span class="chess">chess</span></div>
-            <div class="eq-sub">Remastered</div>
-          </div>
-        </header>
-
-        <nav id="menu" class="menu">
-          <h2 class="menu-title">Main Menu</h2>
-          <div class="menu-grid">
-            <button class="card c-slate" data-panel="hello" data-preview="terrain"><span class="card-icon">✦</span><b>Hello Trenchess</b><small>Understand the fundamentals and prophecy.</small></button>
-            <button class="card c-red" data-panel="play" data-preview="open"><span class="card-icon">⚔</span><b>Play Trenchess</b><small>Master a whole new way to play chess.</small></button>
-            <button class="card c-emerald" data-panel="lay" data-preview="land"><span class="card-icon">⛏</span><b>Lay Trenchess</b><small>Shape your own battlefield, then fight on it.</small></button>
-            <button class="card c-amber soon" data-preview="terrain" disabled><span class="card-icon">♛</span><b>Lead Trenchess</b><small>Leaderboards are coming soon.</small></button>
-            <button class="card c-blue" data-panel="educate" data-preview="terrain"><span class="card-icon">✎</span><b>Educate Trenchess</b><small>The codex of every unit and terrain.</small></button>
-            <button class="card c-purple soon" data-preview="land" disabled><span class="card-icon">∑</span><b>Study Trenchess</b><small>Battle statistics are coming soon.</small></button>
-          </div>
-        </nav>
-
-        <section class="panel hidden" data-panel="play">
-          <header class="panel-head"><button class="btn back" data-back>‹ Back</button><h2>Play Trenchess</h2></header>
-          <form id="setup" class="setup">
-            <fieldset>
-              <legend>Opponent</legend>
-              <label><input type="radio" name="opponent" value="ai" checked /> Computer</label>
-              <label><input type="radio" name="opponent" value="hotseat" /> Hotseat (2 players)</label>
-            </fieldset>
-            <fieldset id="difficulty-set">
-              <legend>Commander</legend>
-              <label><input type="radio" name="difficulty" value="recruit" /> Recruit</label>
-              <label><input type="radio" name="difficulty" value="veteran" checked /> Veteran</label>
-              <label><input type="radio" name="difficulty" value="warlord" /> Warlord</label>
-            </fieldset>
-            <fieldset>
-              <legend>Orders per turn</legend>
-              <label><input type="radio" name="orders" value="2" checked /> Command (2)</label>
-              <label><input type="radio" name="orders" value="1" /> Classic (1)</label>
-            </fieldset>
-            <fieldset>
-              <legend>Board</legend>
-              <label><input type="radio" name="board" value="extended" checked /> Extended (12×12)</label>
-              <label><input type="radio" name="board" value="classic" /> Classic (8×8)</label>
-            </fieldset>
-            <fieldset class="modes">
-              <legend>Mode</legend>
-              <label><input type="radio" name="mode" value="omega" /> <b>Ω Omega</b> <small>"Set the stage, Gamemaster."</small></label>
-              <label><input type="radio" name="mode" value="chi" /> <b>χ Chi</b> <small>"The Trench part, done for you."</small></label>
-              <label><input type="radio" name="mode" value="pi" checked /> <b>π Pi</b> <small>"Classic with random toppings."</small></label>
-              <label><input type="radio" name="mode" value="alpha" /> <b>α Alpha</b> <small>"Entropy unleashed."</small></label>
-            </fieldset>
-            <fieldset>
-              <legend>Piece style</legend>
-              <label><input type="radio" name="style" value="legion" checked /> Figurines</label>
-              <label><input type="radio" name="style" value="classic" /> Chessmen</label>
-              <label><input type="radio" name="style" value="crystal" /> Crystal</label>
-              <label><input type="radio" name="style" value="glyph" /> Bold glyphs</label>
-            </fieldset>
-            <fieldset>
-              <legend>Army colors</legend>
-              <label><input type="radio" name="palette" value="royal" checked /> Blue &amp; Red</label>
-              <label><input type="radio" name="palette" value="ivory" /> White &amp; Black</label>
-              <label><input type="radio" name="palette" value="verdant" /> Green &amp; Yellow</label>
-            </fieldset>
-            <fieldset>
-              <legend>Fog of war</legend>
-              <label><input type="checkbox" name="fog" /> Only see what your units see</label>
-            </fieldset>
-            <button type="submit" class="btn primary big">To battle</button>
-          </form>
-        </section>
-
+    <section id="panels" class="screen panels hidden">
         <section class="panel hidden" data-panel="hello">
-          <header class="panel-head"><button class="btn back" data-back>‹ Back</button><h2>Hello Trenchess</h2></header>
-          <p class="prophecy">"From the trench, the Chessmen grow stronger." The world cracks into terrain, and every piece learns a new way to fight.</p>
-          <ul>
-            <li><b>Deploy:</b> place up to 16 terrain tiles in your half and arrange your army in your back four rows.</li>
-            <li><b>Orders:</b> in Command mode you give 2 orders a turn, each to a different unit. Combos are deadly: a discovered attack can take a king within one turn.</li>
-            <li><b>Terrain:</b> forests stop rooks and knights, swamps stop bishops and knights, mountains stop rooks and bishops. Deserts let anyone in but stop sliders, and units left idle there at the end of your turn perish.</li>
-            <li><b>The Chessmen grow stronger:</b> the Equinox King's Somersault Assault (2 straight, capturing what it passes), the Sacred Queen's 8 Legged Gallop (knight leaps), the Twilight Fortress's Four-Corners Fortnight (1 diagonal), the Light Seer's Leap of Faith (2 straight), the Shadow Knight's Triple-Bar Jump (3 straight) and the Nimbus Jumper's Double-back Flip (2 back).</li>
-            <li><b>Victory:</b> capture or checkmate the enemy King.</li>
-            <li><b>Controls:</b> click a unit, then a highlighted tile. Right-click cancels. Q/E rotate the board, T switches piece style, scroll zooms, right-drag pans, Space ends your turn.</li>
-          </ul>
-        </section>
+        <header class="panel-head"><button class="btn back" data-back>‹ Back</button><h2>Hello Trenchess</h2></header>
+        <p class="prophecy">"From the trench, the Chessmen grow stronger." The world cracks into terrain, and every piece learns a new way to fight.</p>
+        <ul>
+          <li><b>Deploy:</b> place up to 16 terrain tiles in your half and arrange your army in your back four rows.</li>
+          <li><b>Orders:</b> in Command mode you give 2 orders a turn, each to a different unit. Combos are deadly: a discovered attack can take a king within one turn.</li>
+          <li><b>Terrain:</b> forests stop rooks and knights, swamps stop bishops and knights, mountains stop rooks and bishops. Deserts let anyone in but stop sliders, and units left idle there at the end of your turn perish.</li>
+          <li><b>The Chessmen grow stronger:</b> the Equinox King's Somersault Assault (2 straight, capturing what it passes), the Sacred Queen's 8 Legged Gallop (knight leaps), the Twilight Fortress's Four-Corners Fortnight (1 diagonal), the Light Seer's Leap of Faith (2 straight), the Shadow Knight's Triple-Bar Jump (3 straight) and the Nimbus Jumper's Double-back Flip (2 back).</li>
+          <li><b>Victory:</b> capture or checkmate the enemy King.</li>
+          <li><b>Controls:</b> click a unit, then a highlighted tile. Right-click cancels. Q/E rotate the board, T switches piece style, scroll zooms, right-drag pans, Space ends your turn.</li>
+        </ul>
+      </section>
 
-        <section class="panel hidden" data-panel="educate">
-          <header class="panel-head"><button class="btn back" data-back>‹ Back</button><h2>Educate Trenchess</h2></header>
-          <div class="chessmen"></div>
-        </section>
-      </div>
+      <section class="panel hidden" data-panel="educate">
+        <header class="panel-head"><button class="btn back" data-back>‹ Back</button><h2>Educate Trenchess</h2></header>
+        <div class="chessmen"></div>
+      </section>
     </section>
 
     <section id="hud" class="hidden">

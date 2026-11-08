@@ -73,7 +73,13 @@ export class Match {
 
   /** Live setup preview: the board a match with these options would start on. Fresh seed every call. */
   preview(options: MatchOptions): void {
-    this.show(buildField(options, freshSeed()));
+    setBoard(options.board);
+    const field = buildField(options, freshSeed());
+    this.show(field);
+    if (!options.fog) return;
+    const grid = visibleCells(createGame(field.board, field.terrain, { ordersPerTurn: options.ordersPerTurn }), 0);
+    this.boardView.setFog(grid);
+    this.units.setVisibility((pos, u) => u.owner === 0 || grid[pos[0]][pos[1]], field.board);
   }
 
   start(options: MatchOptions): void {
