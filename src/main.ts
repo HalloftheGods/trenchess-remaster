@@ -224,6 +224,15 @@ const bindMusic = (): void => {
   new Backdrop($("#backdrop"), () => music.levels(), lifetime.signal);
 };
 
+/** The inline boot screen in index.html covers the page until the engine has painted and the splash is up. */
+const liftBootScreen = (): void => {
+  document.body.classList.remove("booting");
+  const cover = document.getElementById("boot");
+  if (!cover) return;
+  cover.classList.add("out");
+  window.setTimeout(() => cover.remove(), 500);
+};
+
 const boot = (s: BattleScene): void => {
   scene = s;
   loadTheme();
@@ -254,6 +263,7 @@ const boot = (s: BattleScene): void => {
   game.scene.add("setup", SetupScene, false);
   game.scene.add("hello", HelloScene, false);
   game.scene.add("splash", SplashScene, true);
+  liftBootScreen();
 };
 
 game = new Phaser.Game({
