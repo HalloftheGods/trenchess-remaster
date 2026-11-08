@@ -54,8 +54,7 @@ export class DuelStage implements Clocked {
     const { p, lw } = pixelScale(scene.scale.width, scene.scale.height);
     this.p = p;
     this.w = lw;
-    screen.resize(lw, SCREEN_H);
-    screen.setScale(p).setPosition(Math.round(scene.scale.width / 2), Math.round(scene.scale.height / 2)).setVisible(false);
+    screen.setOrigin(0, 0).setScale(p).setPosition(Math.floor((scene.scale.width - lw * p) / 2), Math.floor((scene.scale.height - SCREEN_H * p) / 2)).setVisible(false);
     matte.setSize(scene.scale.width, scene.scale.height).setVisible(false);
     this.back = scene.add.container(0, 0);
     this.actors = scene.add.container(0, 0);

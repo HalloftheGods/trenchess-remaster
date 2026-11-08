@@ -26,6 +26,8 @@ export class DuelFx {
   private readonly chunks: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly emitters: Phaser.GameObjects.Particles.ParticleEmitter[];
   private readonly loose = new Set<Phaser.GameObjects.GameObject>();
+  /** Frame-stepping counters: they target no object, so `clear` must stop them by hand. */
+  private readonly anims = new Set<Phaser.Tweens.Tween>();
 
   constructor(private scene: Phaser.Scene, private layer: Phaser.GameObjects.Container) {
     this.bits = scene.add.particles(0, 0, "px-dot", { emitting: false, lifespan: { min: 220, max: 520 }, speed: { min: 30, max: 120 }, gravityY: 160 });
@@ -50,10 +52,10 @@ export class DuelFx {
     const n = sheet.frames.length;
     const fps = o.fps ?? 18;
     const total = (n / fps) * 1000 + (o.hold ?? 0);
-    this.scene.tweens.addCounter({ from: 0, to: 1, duration: total, onUpdate: (tw) => {
+    this.anims.add(this.scene.tweens.addCounter({ from: 0, to: 1, duration: total, onUpdate: (tw) => {
       const i = Math.min(n - 1, Math.floor(((tw.getValue() ?? 0) * total * fps) / 1000));
-      img.setTexture(fxKey(id, i));
-    }, onComplete: () => this.drop(img) });
+      if (img.active) img.setTexture(fxKey(id, i));
+    }, onComplete: () => this.drop(img) }));
     return img;
   }
 
@@ -68,7 +70,10 @@ export class DuelFx {
     this.loose.add(img);
     const n = sheet.frames.length;
     const fps = o.fps ?? 14;
-    if (n > 1) this.scene.tweens.addCounter({ from: 0, to: n - 1, duration: ((n - 1) / fps) * 1000, onUpdate: (tw) => img.setTexture(fxKey(id, Math.round(tw.getValue() ?? 0))) });
+    const frameAt = (tw: Phaser.Tweens.Tween): void => {
+      if (img.active) img.setTexture(fxKey(id, Math.round(tw.getValue() ?? 0)));
+    };
+    if (n > 1) this.anims.add(this.scene.tweens.addCounter({ from: 0, to: n - 1, duration: ((n - 1) / fps) * 1000, onUpdate: frameAt }));
     return img;
   }
 
@@ -79,7 +84,7 @@ export class DuelFx {
 
   private drop(img: Phaser.GameObjects.Image): void {
     this.loose.delete(img);
-    img.destroy();
+    if (img.active) img.destroy();
   }
 
   /** A burst of single pixels. */
@@ -133,6 +138,8 @@ export class DuelFx {
   }
 
   clear(): void {
+    this.anims.forEach((t) => t.remove());
+    this.anims.clear();
     this.emitters.forEach((e) => e.killAll());
     this.loose.forEach((o) => {
       this.scene.tweens.killTweensOf(o);

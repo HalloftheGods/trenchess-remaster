@@ -9,6 +9,8 @@ import { textKey, textWidth } from "./pixel/textures";
 /** Height of the upper bar and top of the lower panel, in duel pixels. */
 export const TOP_BAR = 20;
 export const PANEL_Y = 150;
+/** Widest a name plate grows on wide windows; both plates sit either side of the centre. */
+const PLATE_MAX = 150;
 
 const INK = 0x0b0a14;
 const GOLD = "#f2c94c";
@@ -49,9 +51,9 @@ export class DuelHud {
   private plate(unit: Unit, side: 0 | 1): Plate {
     const s = this.scene;
     const f = FACTIONS[unit.owner];
-    const pw = Math.floor(this.w / 2) - 6;
+    const pw = Math.min(PLATE_MAX, Math.floor(this.w / 2) - 6);
     const ph = SCREEN_H - PANEL_Y - 5;
-    const x = side === 0 ? 4 : this.w - 4 - pw;
+    const x = side === 0 ? Math.floor(this.w / 2) - 2 - pw : Math.ceil(this.w / 2) + 2;
     const root = s.add.container(x, PANEL_Y + 3);
     const edge = s.add.rectangle(0, 0, pw, ph, hex("#140c1c")).setOrigin(0, 0);
     const body = s.add.rectangle(1, 1, pw - 2, ph - 2, hex(mix(f.dark, "#0b0a14", 0.45))).setOrigin(0, 0);

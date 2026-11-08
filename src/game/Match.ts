@@ -432,8 +432,8 @@ export class Match {
     const s = this.state!;
     if (e.kind === "order" && e.order) {
       this.hud.log(e, before);
-      await captureDuels(e.order, before, s.terrain, this.options.duel ?? "full");
       await this.units.animateOrder(e.order, before);
+      await captureDuels(e.order, before, s.terrain, this.options.duel ?? "full");
     }
     if (e.kind === "promote" && e.at) await this.units.promote(e.at, s.board);
     if (e.kind === "perish" && e.at) {

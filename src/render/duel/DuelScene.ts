@@ -2,9 +2,12 @@ import Phaser from "phaser";
 import { duels, type DuelHost, type DuelRequest } from "./duel";
 import { paintFx } from "./duelFx";
 import { DuelRun } from "./duelRun";
-import { DuelStage } from "./DuelStage";
+import { DuelStage, pixelScale } from "./DuelStage";
 import { playDuel, tempoOf } from "./duelTimeline";
-import { SCREEN_H, TILE_W } from "./pixel/painter";
+import { SCREEN_H } from "./pixel/painter";
+
+/** Longest a duel may hold the board, in wall time, whatever goes wrong inside it. */
+const SAFETY_MS = 15000;
 
 /**
  * The capture cutscene: a full-screen pixel-art battle over the board, in the style of the
@@ -20,8 +23,6 @@ export class DuelScene extends Phaser.Scene implements DuelHost {
   private run: DuelRun | null = null;
   private queue: Promise<void> = Promise.resolve();
   private world!: Phaser.GameObjects.Container;
-  private screen!: Phaser.GameObjects.RenderTexture;
-  private matte!: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super("duel");
@@ -30,9 +31,6 @@ export class DuelScene extends Phaser.Scene implements DuelHost {
   create(): void {
     paintFx(this);
     this.world = this.make.container({ x: 0, y: 0 }, false);
-    this.matte = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x05060a).setOrigin(0, 0).setVisible(false);
-    this.screen = this.add.renderTexture(0, 0, TILE_W, SCREEN_H).setOrigin(0.5).setVisible(false);
-    this.screen.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     const skip = (): void => this.run?.skip();
     this.input.on("pointerdown", skip);
     this.input.keyboard?.on("keydown", skip);
@@ -55,17 +53,34 @@ export class DuelScene extends Phaser.Scene implements DuelHost {
 
   private async show(req: DuelRequest): Promise<void> {
     this.scene.bringToTop();
-    const stage = new DuelStage(this, this.world, this.screen, this.matte, req);
+    // A fresh screen per duel, sized for the window as it is now (a resized texture keeps its old buffer).
+    const { lw } = pixelScale(this.scale.width, this.scale.height);
+    const matte = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x05060a).setOrigin(0, 0).setVisible(false);
+    const screen = this.add.renderTexture(0, 0, lw, SCREEN_H).setVisible(false);
+    screen.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    const stage = new DuelStage(this, this.world, screen, matte, req);
     const mode = req.mode ?? "full";
     const run = new DuelRun(this, stage, tempoOf(mode), mode === "full");
     this.stage = stage;
     this.run = run;
+    let guard = 0;
+    const timeout = new Promise<void>((resolve) => {
+      guard = window.setTimeout(() => {
+        console.warn("duel: safety timeout, returning to the board");
+        resolve();
+      }, SAFETY_MS);
+    });
     try {
-      await playDuel({ s: stage, r: run });
+      const duel = playDuel({ s: stage, r: run }).catch((e: unknown) => console.error("duel", e));
+      await Promise.race([duel, timeout]);
     } finally {
+      window.clearTimeout(guard);
+      run.skip();
       this.stage = null;
       this.run = null;
       stage.destroy();
+      screen.destroy();
+      matte.destroy();
     }
   }
 }

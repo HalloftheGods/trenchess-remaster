@@ -141,9 +141,10 @@ export class DuelSprite {
     this.img.clearTint();
     this.scene.tweens.addCounter({ from: 0, to: keys.length, duration: ms, onUpdate: (tw) => {
       const i = Math.floor(tw.getValue() ?? 0);
+      if (!this.img.active) return;
       if (i >= keys.length) this.img.setVisible(false);
       else this.img.setTexture(keys[i]);
-    }, onComplete: () => this.img.setVisible(false) });
+    }, onComplete: () => this.img.active && this.img.setVisible(false) });
     this.sync();
   }
 
