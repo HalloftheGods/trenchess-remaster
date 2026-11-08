@@ -6,6 +6,7 @@ import { SplashScene } from "./render/scenes/SplashScene";
 import { TitleScene } from "./render/scenes/TitleScene";
 import { SetupScene } from "./render/scenes/SetupScene";
 import { OverlayScene } from "./render/scenes/OverlayScene";
+import { HelloScene } from "./render/scenes/HelloScene";
 import { Match, type MatchOptions } from "./game/Match";
 import { Hud } from "./ui/Hud";
 import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
@@ -90,11 +91,21 @@ const openSetup = (mode?: MatchOptions["mode"]): void => {
   game.scene.start("setup", { mode });
 };
 
-const openPanel = (name: "hello" | "educate"): void => {
+/** Hello Trenchess: the tome scene over the board, framed like setup. */
+const openHello = (): void => {
+  game.scene.sleep("title");
+  scene.setDrift(false);
+  scene.view.setDiorama(false);
+  scene.view.frame("setup");
+  overlay().setShown(true);
+  game.scene.start("hello");
+};
+
+const openPanel = (name: "educate"): void => {
   game.scene.sleep("title");
   $("#panels").classList.remove("hidden");
   document.querySelectorAll<HTMLElement>(".panel").forEach((p) => p.classList.toggle("hidden", p.dataset.panel !== name));
-  if (name === "educate") chessmen.render();
+  chessmen.render();
 };
 
 const startMatch = (options: MatchOptions): void => {
@@ -123,7 +134,8 @@ const bindFlow = (): void => {
   ev.on("ui:open", (page: string) => {
     if (page === "play") openSetup();
     if (page === "lay") openSetup("omega");
-    if (page === "hello" || page === "educate") openPanel(page);
+    if (page === "hello") openHello();
+    if (page === "educate") openPanel(page);
   });
   ev.on("ui:setup-changed", (options: MatchOptions) => match.preview(options));
   ev.on("ui:theme", ({ style, palette }: { style: PieceStyle; palette: PaletteId }) => setTheme(style, palette));
@@ -204,6 +216,7 @@ const boot = (s: BattleScene): void => {
   game.scene.add("overlay", OverlayScene, true);
   game.scene.add("title", TitleScene, false);
   game.scene.add("setup", SetupScene, false);
+  game.scene.add("hello", HelloScene, false);
   game.scene.add("splash", SplashScene, true);
 };
 
