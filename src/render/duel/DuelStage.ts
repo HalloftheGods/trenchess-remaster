@@ -1,133 +1,117 @@
 import Phaser from "phaser";
 import type { Unit } from "../../engine/types";
-import { UNIT_LORE } from "../../game/lore";
 import { FACTIONS } from "../art/unitArt";
-import { COLOR, FONT } from "../ui/fonts";
 import type { DuelRequest } from "./duel";
-import { BG_H, GROUND_Y, LAYERS, PARALLAX, bgKey, paintDuelBackdrop } from "./duelBackdrop";
-import { DUEL_H, type DuelFrame } from "./duelFrames";
-import { PX_KEY, duelKey, paintDuelParticle, paintDuelUnit } from "./duelSprites";
+import { DuelBackdrop, lightOf } from "./duelBackdrop";
+import { DuelFx } from "./duelFx";
+import { DuelHud } from "./duelHud";
+import { DuelRig } from "./DuelRig";
+import type { Clocked } from "./duelRun";
 
-export interface Fighter {
-  unit: Unit;
-  sprite: Phaser.GameObjects.Image;
-  plate: Phaser.GameObjects.Container;
-  /** +1 faces right (stands on the left), -1 faces left. */
-  dir: 1 | -1;
-  /** Resting x on the floor. */
-  home: number;
-}
-
-const PLATE_W = 250;
-const PLATE_H = 44;
+export const factionTint = (u: Unit): number => Phaser.Display.Color.HexStringToColor(FACTIONS[u.owner].css).color;
 
 /**
- * Everything the duel draws: the letterbox, the three parallax layers of the strip, both
- * chessmen with their name plates, the flash and the particle emitter. Positions are computed
- * from the screen size once, in logical units scaled by `k` (integer, for crisp pixels).
+ * Everything one duel draws. The world (backdrop, fighters, effects) sits on the scene's main
+ * camera, which zooms, pans and shakes; the HUD sits on a steady UI camera. Sizes come from the
+ * screen: `k` is pixels per rig unit, so a footman stands about a third of the screen tall.
  */
-export class DuelStage {
-  readonly root: Phaser.GameObjects.Container;
-  readonly attacker: Fighter;
-  readonly defender: Fighter;
+export class DuelStage implements Clocked {
+  readonly w: number;
+  readonly h: number;
   readonly k: number;
-  readonly top: number;
   readonly floor: number;
-  private readonly layers: Phaser.GameObjects.TileSprite[] = [];
-  private readonly flash: Phaser.GameObjects.Rectangle;
-  private readonly particles: Phaser.GameObjects.Particles.ParticleEmitter;
+  /** +1 when the attacker stands on the left and faces right. */
+  readonly dir: 1 | -1;
+  readonly a: DuelRig;
+  readonly d: DuelRig;
+  readonly aHome: number;
+  readonly dHome: number;
+  /** Plate index of each side (plates are ordered left, right). */
+  readonly aSide: 0 | 1;
+  readonly dSide: 0 | 1;
+  readonly fx: DuelFx;
+  readonly hud: DuelHud;
+  readonly backdrop: DuelBackdrop;
+  readonly cam: Phaser.Cameras.Scene2D.Camera;
+  readonly back: Phaser.GameObjects.Container;
+  readonly actors: Phaser.GameObjects.Container;
+  readonly front: Phaser.GameObjects.Container;
+  speed = 1;
+  private trails: Phaser.Time.TimerEvent[] = [];
+  /** Health left on the defender's plate. */
+  hp = 1;
+  outcomeShown = false;
 
-  constructor(private scene: Phaser.Scene, req: DuelRequest) {
-    const w = scene.scale.width;
-    const h = scene.scale.height;
-    this.k = Phaser.Math.Clamp(Math.floor(Math.min(h * 0.46, (w * 9) / 16) / BG_H), 3, 12);
-    const stripH = BG_H * this.k;
-    this.top = Math.round((h - stripH) / 2);
-    this.floor = this.top + GROUND_Y * this.k;
-    this.root = scene.add.container(0, 0).setDepth(1000);
-    paintDuelBackdrop(scene, req.terrain);
-    paintDuelUnit(scene, req.attacker);
-    paintDuelUnit(scene, req.defender);
-    paintDuelParticle(scene);
-    this.letterbox(w, h, stripH);
-    LAYERS.forEach((layer) => {
-      const t = scene.add.tileSprite(0, this.top, w, stripH, bgKey(req.terrain, layer)).setOrigin(0, 0).setTileScale(this.k, this.k);
-      this.layers.push(t);
-      this.root.add(t);
-    });
-    const left = req.attackerOwner === 0;
-    this.attacker = this.fighter(req.attacker, left ? 1 : -1, w);
-    this.defender = this.fighter(req.defender, left ? -1 : 1, w);
-    this.flash = scene.add.rectangle(0, this.top, w, stripH, 0xffffff).setOrigin(0, 0).setAlpha(0);
-    this.particles = scene.add.particles(0, 0, PX_KEY, { emitting: false, lifespan: 700, gravityY: 900, speed: { min: 120, max: 420 }, angle: { min: 200, max: 340 }, scale: this.k / 4, rotate: { min: 0, max: 360 } });
-    this.root.add([this.flash, this.particles]);
+  constructor(readonly scene: Phaser.Scene, readonly world: Phaser.GameObjects.Container, readonly ui: Phaser.GameObjects.Container, readonly req: DuelRequest) {
+    this.w = scene.scale.width;
+    this.h = scene.scale.height;
+    this.k = Math.max(1, Math.min(this.h * 0.0042, this.w * 0.003));
+    this.cam = scene.cameras.main;
+    this.cam.setZoom(1).setScroll(0, 0);
+    this.back = scene.add.container(0, 0);
+    this.actors = scene.add.container(0, 0);
+    this.front = scene.add.container(0, 0);
+    world.add([this.back, this.actors, this.front]);
+    this.backdrop = new DuelBackdrop(scene, this.back, this.front, req.terrain, this.w, this.h, this.k);
+    this.floor = this.backdrop.floorY;
+    this.dir = req.attackerOwner === 0 ? 1 : -1;
+    const gap = (u: Unit): number => Math.max(this.w * 0.16, 64 * this.k) + (u.type === "knight" || u.type === "queen" ? 26 * this.k : 0);
+    this.aHome = this.w / 2 - this.dir * gap(req.attacker);
+    this.dHome = this.w / 2 + this.dir * gap(req.defender);
+    this.d = new DuelRig(scene, this.actors, req.defender, this.k, this.dHome, this.floor, (-this.dir) as 1 | -1);
+    this.a = new DuelRig(scene, this.actors, req.attacker, this.k, this.aHome, this.floor, this.dir);
+    const light = lightOf(req.terrain);
+    this.a.setAmbient(light);
+    this.d.setAmbient(light);
+    this.fx = new DuelFx(scene, this.actors, this.k);
+    this.aSide = this.dir > 0 ? 0 : 1;
+    this.dSide = this.dir > 0 ? 1 : 0;
+    const [left, right] = this.dir > 0 ? [req.attacker, req.defender] : [req.defender, req.attacker];
+    this.hud = new DuelHud(scene, ui, this.w, this.h, left, right);
+    if (scene.sys.renderer.type === Phaser.WEBGL && this.cam.postFX) this.cam.postFX.addVignette(0.5, 0.5, 0.92, 0.38);
   }
 
-  private letterbox(w: number, h: number, stripH: number): void {
-    const bars = [this.scene.add.rectangle(0, 0, w, this.top, 0x000000, 0.6), this.scene.add.rectangle(0, this.top + stripH, w, h, 0x000000, 0.6)];
-    const lines = [this.scene.add.rectangle(0, this.top - 2, w, 2, COLOR.gold), this.scene.add.rectangle(0, this.top + stripH, w, 2, COLOR.gold)];
-    [...bars, ...lines].forEach((r) => this.root.add(r.setOrigin(0, 0)));
+  setSpeed(s: number): void {
+    this.speed = s;
+    this.scene.tweens.timeScale = s;
+    this.scene.time.timeScale = s;
+    this.fx.setSpeed(s);
+    this.backdrop.setSpeed(s);
   }
 
-  private fighter(unit: Unit, dir: 1 | -1, w: number): Fighter {
-    const home = w / 2 - dir * w * 0.2;
-    const sprite = this.scene.add.image(home, this.floor, duelKey(unit, "idle")).setOrigin(0.5, 1).setScale(this.k).setFlipX(dir < 0);
-    const plate = this.plate(unit, dir, w);
-    this.root.add([sprite, plate]);
-    return { unit, sprite, plate, dir, home };
+  tick(dtMs: number): void {
+    const dt = (dtMs / 1000) * this.speed;
+    this.a.tick(dt);
+    this.d.tick(dt);
+    this.backdrop.tick(dt);
+    this.hud.tick(dtMs / 1000);
   }
 
-  private plate(unit: Unit, dir: 1 | -1, w: number): Phaser.GameObjects.Container {
-    const f = FACTIONS[unit.owner];
-    const x = dir > 0 ? 24 : w - 24 - PLATE_W;
-    const c = this.scene.add.container(x, this.top + 16);
-    const bg = this.scene.add.rectangle(0, 0, PLATE_W, PLATE_H, COLOR.ink, 0.82).setOrigin(0, 0);
-    const stripe = this.scene.add.rectangle(dir > 0 ? 0 : PLATE_W - 6, 0, 6, PLATE_H, Phaser.Display.Color.HexStringToColor(f.css).color).setOrigin(0, 0);
-    const name = this.scene.add.text(dir > 0 ? 16 : PLATE_W - 16, 6, UNIT_LORE[unit.type].title, { fontFamily: FONT.display, fontSize: "17px", fontStyle: "600", color: COLOR.bone }).setOrigin(dir > 0 ? 0 : 1, 0);
-    const who = this.scene.add.text(dir > 0 ? 16 : PLATE_W - 16, 27, `${f.name} · ${UNIT_LORE[unit.type].chess}`, { fontFamily: FONT.body, fontSize: "11px", color: f.css }).setOrigin(dir > 0 ? 0 : 1, 0);
-    c.add([bg, stripe, name, who]);
-    return c;
+  /** Ghost copies of `rig` dropped every `every` ms until `stopTrails`. */
+  trail(rig: DuelRig, color: number, every = 50): void {
+    this.trails.push(this.scene.time.addEvent({ delay: every, loop: true, callback: () => rig.ghost(color, 0.22, 200) }));
   }
 
-  /** Scrolls the parallax by `dx` ground pixels; nearer layers move more. */
-  scroll(dx: number): void {
-    this.layers.forEach((t, i) => {
-      t.tilePositionX += (dx * PARALLAX[LAYERS[i]]) / this.k;
-    });
+  stopTrails(): void {
+    this.trails.splice(0).forEach((t) => t.remove(false));
   }
 
-  frame(f: Fighter, frame: DuelFrame): void {
-    f.sprite.setTexture(duelKey(f.unit, frame));
-  }
-
-  /** Lunge target: most of the way to the defender's chest. */
-  lungeX(): number {
-    return this.defender.home - this.defender.dir * this.k * 10;
-  }
-
-  burst(x: number, y: number, tint: number, count: number): void {
-    this.particles.setParticleTint(tint);
-    this.particles.explode(count, x, y);
-  }
-
-  flashOnce(ms: number): void {
-    this.flash.setAlpha(0.9);
-    this.scene.tweens.add({ targets: this.flash, alpha: 0, duration: ms, ease: "Quad.Out" });
-  }
-
-  /** Where a hit lands on `f`: mid-torso, in screen pixels. */
-  chest(f: Fighter): { x: number; y: number } {
-    return { x: f.sprite.x, y: f.sprite.y - (DUEL_H * this.k) / 2 };
-  }
-
-  /** Stops every running tween on the stage's objects (a skip jumps to the end state). */
-  freeze(): void {
-    this.scene.tweens.killTweensOf(this.root.getAll());
-    this.scene.tweens.killTweensOf(this.root);
+  /** Shakes the world camera; `power` 0..1. */
+  shake(ms: number, power: number): void {
+    this.cam.shake(ms, 0.003 + power * 0.014, true);
   }
 
   destroy(): void {
-    this.freeze();
-    this.root.destroy(true);
+    this.stopTrails();
+    this.setSpeed(1);
+    this.fx.clear();
+    this.cam.resetFX();
+    this.cam.postFX?.clear();
+    this.cam.setZoom(1).setScroll(0, 0);
+    this.scene.tweens.killAll();
+    this.scene.time.removeAllEvents();
+    this.world.removeAll(true);
+    this.ui.removeAll(true);
+    this.world.setAlpha(1);
   }
 }

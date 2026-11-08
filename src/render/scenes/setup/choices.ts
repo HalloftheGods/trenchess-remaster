@@ -35,8 +35,8 @@ export const ORDERS: Choice[] = [
 
 export const DUELS: Choice[] = [
   { id: "off", label: "Off", hint: "Captures resolve on the board." },
-  { id: "fast", label: "Fast", hint: "A quick pixel-art clash on every capture." },
-  { id: "full", label: "Full", hint: "The full pixel-art duel: slide in, strike, crumble, pose." },
+  { id: "fast", label: "Fast", hint: "A quick battle scene on every capture: the attack and the fall." },
+  { id: "full", label: "Full", hint: "The full battle scene: entrance, the chessman's ability, the fall, the victory." },
 ];
 
 export const PRESET_CHOICES: Choice[] = PRESETS.map((p) => ({ id: p.id, label: p.name, hint: p.tagline }));

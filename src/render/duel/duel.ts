@@ -26,7 +26,7 @@ export const duels = {
   attach(h: DuelHost | null): void {
     host = h;
     if (typeof window === "undefined") return;
-    Object.assign(window, { __tcDuel: h ? { play: (req: DuelRequest) => h.play(req) } : undefined });
+    Object.assign(window, { __tcDuel: h ? { play: (req: DuelRequest) => h.play(req), host: h } : undefined });
   },
   play(req: DuelRequest): Promise<void> {
     if (!host || req.mode === "off") return Promise.resolve();
