@@ -20,7 +20,7 @@ export const VOLCANIC: WorldRecipe = {
     desert: { top: "#6a6462", side: "#3e3a38", speck: "#848080" },
   },
   tops: {
-    flat: { light: "#343234", dark: "#242224", detail: "#444044", shadow: "#141214" },
+    flat: { light: "#3e3a3c", dark: "#222022", detail: "#4a4648", shadow: "#141214" },
     forest: { light: "#322826", dark: "#221a18", detail: EMBER, shadow: "#120c0a" },
     swamp: { light: "#442016", dark: "#2c140c", detail: "#ffd070", shadow: "#1a0c08" },
     mountain: { light: "#2a2430", dark: "#1a1620", detail: "#ff8a3a", shadow: "#0c0a10" },

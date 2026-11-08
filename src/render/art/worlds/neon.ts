@@ -40,7 +40,7 @@ export const NEON: WorldRecipe = {
     desert: { top: "#4a4440", side: "#2e2a27", speck: "#5e5651" },
   },
   tops: {
-    flat: { light: "#2a2e38", dark: "#1c1f27", detail: "#3a3f4c", shadow: "#101218" },
+    flat: { light: "#30353f", dark: "#1a1d24", detail: "#3a3f4c", shadow: "#101218" },
     forest: { light: "#1f2a3a", dark: "#141c28", detail: CYAN, shadow: "#0a1018" },
     swamp: { light: "#1f3a2e", dark: "#132820", detail: TOXIC, shadow: "#0a1810" },
     mountain: { light: "#2e3a4e", dark: "#1e2636", detail: "#9fe8ff", shadow: "#0e1420" },

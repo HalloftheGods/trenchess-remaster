@@ -25,12 +25,12 @@ export const WORLD_LABELS: Record<WorldId, string> = {
 };
 
 export const WORLD_TAGLINES: Record<WorldId, string> = {
-  classic: "The Trench as it has always been: woods, marsh, peaks and dunes.",
-  neon: "A city that never sleeps. Holograms, toxic pools and glass towers.",
-  frontier: "The old west. Prairie, pine stands, red mesas and bleached bones.",
+  classic: "Woods, marsh, peaks and dunes as they always were.",
+  neon: "Holograms, toxic pools and glass towers at night.",
+  frontier: "Prairie, pine stands, red mesas and bleached bones.",
   tundra: "Frozen lakes and snowy firs under the aurora.",
-  jungle: "Vines, lilies and mossy temple steps in the steaming green.",
-  volcanic: "Basalt, embers and lava under a sky of red smoke.",
+  jungle: "Vines, lilies and mossy temple steps.",
+  volcanic: "Basalt, embers and lava under red smoke.",
 };
 
 const RECIPES: Record<WorldId, WorldRecipe> = {
