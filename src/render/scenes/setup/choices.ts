@@ -13,12 +13,13 @@ export const MODES: Choice[] = [
 
 export const BOARDS: Choice[] = [
   { id: "extended", label: "Extended 12×12", hint: "The full Trench: 16 terrain tiles a side." },
-  { id: "classic", label: "Classic 8×8", hint: "The classic chessboard, 8 terrain tiles a side (arriving soon).", disabled: true },
+  { id: "classic", label: "Classic 8×8", hint: "The classic chessboard, 8 terrain tiles a side. Chi plays a random battlefield here." },
 ];
 
 export const OPPONENTS: Choice[] = [
   { id: "ai", label: "Computer" },
   { id: "hotseat", label: "Hotseat" },
+  { id: "online", label: "Online" },
 ];
 
 export const COMMANDERS: Choice[] = [
@@ -56,7 +57,7 @@ const KEY = "trenchess-setup";
 export const loadOptions = (): MatchOptions => {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as Partial<MatchOptions> | null;
-    return { ...DEFAULT_OPTIONS, ...(saved ?? {}), board: "extended" };
+    return { ...DEFAULT_OPTIONS, ...(saved ?? {}) };
   } catch {
     return { ...DEFAULT_OPTIONS };
   }

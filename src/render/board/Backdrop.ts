@@ -1,7 +1,23 @@
 import Phaser from "phaser";
 import { boardBounds, getProjection } from "../iso";
 import { PEAKS_H } from "../art/skyArt";
-import { PLINTH_ISO, PLINTH_MARGIN, PLINTH_TOP, type PlinthSpec } from "../art/plinthArt";
+import { PLINTH_MARGIN, plinthIso, plinthTop, type PlinthSpec } from "../art/plinthArt";
+import { BOARD_SIZE } from "../../engine/rules";
+import { backdrop, type BackdropMode } from "./backdropMode";
+
+interface Look {
+  dome: boolean;
+  stars: boolean;
+  peaks: boolean;
+  haze: number;
+}
+
+const LOOKS: Record<BackdropMode, Look> = {
+  dusk: { dome: true, stars: true, peaks: false, haze: 0.08 },
+  peaks: { dome: true, stars: true, peaks: true, haze: 0.14 },
+  stars: { dome: false, stars: true, peaks: false, haze: 0 },
+  void: { dome: false, stars: false, peaks: false, haze: 0 },
+};
 
 /** Everything behind the tiles: sky dome, drifting stars, distant peaks, the ground and the stone plinth. */
 export class Backdrop {
@@ -18,20 +34,48 @@ export class Backdrop {
     this.ground = scene.add.graphics().setDepth(-99);
     this.ground.fillGradientStyle(0x2a2126, 0x2a2126, 0x05060a, 0x05060a, 1);
     this.ground.fillRect(-3000, 0, 6000, 2600);
+    // soften the horizon: the sky melts into the dark ground instead of ending on a hard line
+    this.ground.fillGradientStyle(0x2a2126, 0x2a2126, 0x2a2126, 0x2a2126, 0, 0, 1, 1);
+    this.ground.fillRect(-3000, -260, 6000, 260);
     this.stars = scene.add.tileSprite(0, 0, 4200, 4200, "sky-stars").setBlendMode("ADD").setAlpha(0.5).setDepth(-98);
     this.peaks = scene.add.image(0, 0, "sky-peaks").setOrigin(0.5, 1).setScale(1.4).setDepth(-97);
-    this.haze = scene.add.image(0, 0, "glow").setBlendMode("ADD").setTint(0xf0b070).setScale(48, 1.3).setAlpha(0.22).setDepth(-96);
-    this.plinthIso = this.plinth(PLINTH_ISO);
-    this.plinthTop = this.plinth(PLINTH_TOP);
+    this.haze = scene.add.image(0, 0, "glow").setBlendMode("ADD").setTint(0xf0b070).setScale(48, 1.3).setAlpha(0.08).setDepth(-96);
+    this.plinthIso = this.plinth(plinthIso(BOARD_SIZE));
+    this.plinthTop = this.plinth(plinthTop(BOARD_SIZE));
     this.relayout(0);
+    this.setMode(backdrop.mode, 0);
+  }
+
+  /** Switches what shows behind the board; `duration` fades the change. */
+  setMode(mode: BackdropMode, duration = 400): void {
+    backdrop.mode = mode;
+    const look = LOOKS[mode];
+    const top = getProjection() === "top";
+    const show = (obj: Phaser.GameObjects.Components.AlphaSingle & Phaser.GameObjects.Components.Visible, alpha: number) => {
+      if (duration > 0) this.scene.tweens.add({ targets: obj, alpha, duration, ease: "Sine.InOut", onComplete: () => obj.setVisible(alpha > 0) });
+      else obj.setAlpha(alpha).setVisible(alpha > 0);
+      if (alpha > 0) obj.setVisible(true);
+    };
+    show(this.dome, look.dome ? 1 : 0);
+    show(this.ground, look.dome ? 1 : 0);
+    show(this.stars, look.stars ? 0.5 : 0);
+    show(this.peaks, look.peaks && !top ? 1 : 0);
+    show(this.haze, look.haze);
   }
 
   private plinth(spec: PlinthSpec): Phaser.GameObjects.Image {
     return this.scene.add.image(0, 0, spec.key).setOrigin(spec.anchorX / spec.width, spec.anchorY / spec.height).setDepth(-10);
   }
 
+  private fit(img: Phaser.GameObjects.Image, spec: PlinthSpec): void {
+    if (img.texture.key === spec.key) return;
+    img.setTexture(spec.key).setOrigin(spec.anchorX / spec.width, spec.anchorY / spec.height);
+  }
+
   /** Place the backdrop for the current projection: the horizon sits just behind the plinth's back edge. */
   relayout(duration: number): void {
+    this.fit(this.plinthIso, plinthIso(BOARD_SIZE));
+    this.fit(this.plinthTop, plinthTop(BOARD_SIZE));
     const b = boardBounds();
     const top = getProjection() === "top";
     const backEdge = b.centerY - b.height / 2 - PLINTH_MARGIN;
@@ -55,7 +99,7 @@ export class Backdrop {
     };
     fade(this.plinthIso, !top);
     fade(this.plinthTop, top);
-    fade(this.peaks, !top);
+    fade(this.peaks, !top && LOOKS[backdrop.mode].peaks);
   }
 
   /** Slow star drift; no allocations. */

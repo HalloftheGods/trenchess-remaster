@@ -1,4 +1,5 @@
 import type { Terrain } from "../engine/types";
+import { BOARD_SIZE } from "../engine/rules";
 
 export const TILE_W = 84;
 export const TILE_H = 42;
@@ -31,8 +32,9 @@ export interface BoardBounds {
   height: number;
 }
 
-const LAST = 11;
-const MID = LAST / 2;
+/** Read at call time: the board can switch between Classic 8×8 and Extended 12×12. */
+const last = (): number => BOARD_SIZE - 1;
+const mid = (): number => last() / 2;
 
 let rotation = 0;
 let projection: Projection = "iso";
@@ -58,7 +60,7 @@ export const standOffset = (): number => (projection === "top" ? TOP_STAND : 0);
 const rotate = (r: number, c: number, turns: number): [number, number] => {
   let vr = r;
   let vc = c;
-  for (let i = 0; i < turns; i++) [vr, vc] = [vc, LAST - vr];
+  for (let i = 0; i < turns; i++) [vr, vc] = [vc, last() - vr];
   return [vr, vc];
 };
 
@@ -66,14 +68,14 @@ export const toView = (r: number, c: number): [number, number] => rotate(r, c, r
 
 export const toScreen = (r: number, c: number): ScreenPoint => {
   const [vr, vc] = toView(r, c);
-  if (projection === "top") return { x: (vc - MID) * TOP_TILE, y: (vr - MID) * TOP_TILE };
+  if (projection === "top") return { x: (vc - mid()) * TOP_TILE, y: (vr - mid()) * TOP_TILE };
   return { x: (vc - vr) * (TILE_W / 2), y: (vc + vr) * (TILE_H / 2) };
 };
 
 const unrotate = (vr: number, vc: number): [number, number] => rotate(vr, vc, (4 - rotation) % 4);
 
 export const toCell = (x: number, y: number): [number, number] => {
-  if (projection === "top") return unrotate(Math.round(y / TOP_TILE + MID), Math.round(x / TOP_TILE + MID));
+  if (projection === "top") return unrotate(Math.round(y / TOP_TILE + mid()), Math.round(x / TOP_TILE + mid()));
   const a = x / (TILE_W / 2);
   const b = y / (TILE_H / 2);
   return unrotate(Math.round((b - a) / 2), Math.round((a + b) / 2));
@@ -87,8 +89,9 @@ export const depthOf = (r: number, c: number, layer: number): number => {
 
 /** World-space footprint of the board's surface in the current projection. */
 export const boardBounds = (): BoardBounds => {
-  if (projection === "top") return { centerX: 0, centerY: 0, width: 12 * TOP_TILE, height: 12 * TOP_TILE };
-  return { centerX: 0, centerY: MID * TILE_H, width: 12 * TILE_W, height: 12 * TILE_H };
+  const n = BOARD_SIZE;
+  if (projection === "top") return { centerX: 0, centerY: 0, width: n * TOP_TILE, height: n * TOP_TILE };
+  return { centerX: 0, centerY: mid() * TILE_H, width: n * TILE_W, height: n * TILE_H };
 };
 
 export const LAYER = {

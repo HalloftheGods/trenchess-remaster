@@ -7,6 +7,8 @@ import { motionMs } from "../ui/fonts";
 import { Button, Carousel, Panel, Segmented, Toggle, heading } from "../ui/widgets";
 import { bindKeys } from "../ui/widgets/common";
 import { SetupRows } from "./setup/SetupRows";
+import { OnlinePanel } from "./setup/OnlinePanel";
+import { BACKDROP_CHOICES, backdrop, type BackdropMode } from "../board/backdropMode";
 import { BOARDS, COMMANDERS, MODES, OPPONENTS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES, loadOptions, saveOptions } from "./setup/choices";
 
 export const PANEL_W = 420;
@@ -31,6 +33,7 @@ export class SetupScene extends Phaser.Scene {
   private rows!: SetupRows;
   private battlefield!: Carousel;
   private commander!: Segmented;
+  private online!: OnlinePanel;
   private unbindKeys: () => void = () => undefined;
   private leaving = false;
 
@@ -69,11 +72,14 @@ export class SetupScene extends Phaser.Scene {
     this.rows.row("Opponent", new Segmented(this, 0, 0, INNER, OPPONENTS, this.options.opponent, (id) => this.setOpponent(id as MatchOptions["opponent"])));
     this.commander = new Segmented(this, 0, 0, INNER, COMMANDERS, this.options.difficulty, (id) => this.set({ difficulty: id as Difficulty }));
     this.rows.row("Commander", this.commander);
-    this.commander.setAlpha(this.options.opponent === "hotseat" ? 0.4 : 1);
+    this.commander.setAlpha(this.options.opponent === "ai" ? 1 : 0.4);
+    this.online = new OnlinePanel(this, INNER, (start) => this.leave(() => this.game.events.emit("ui:start-online", start)));
+    this.rows.row("Online", this.online, this.options.opponent === "online");
     this.rows.row("Orders", new Segmented(this, 0, 0, INNER, ORDERS, String(this.options.ordersPerTurn), (id) => this.set({ ordersPerTurn: Number(id) })));
     const styleAt = Math.max(0, STYLE_CHOICES.findIndex((c) => c.id === theme.style));
     this.rows.row("Chessmen", new Carousel(this, 0, 0, INNER, STYLE_CHOICES, styleAt, (i) => this.setTheme(STYLE_CHOICES[i].id as PieceStyle, theme.palette)));
     this.rows.row("Colors", new Segmented(this, 0, 0, INNER, PALETTE_CHOICES, theme.palette, (id) => this.setTheme(theme.style, id as PaletteId)));
+    this.rows.row("Backdrop", new Segmented(this, 0, 0, INNER, BACKDROP_CHOICES, backdrop.mode, (id) => this.game.events.emit("ui:backdrop", id as BackdropMode)));
     this.rows.add(new Toggle(this, 0, 0, "Fog of war (forests hide the enemy)", this.options.fog, (v) => this.set({ fog: v })), 40);
     this.buttons();
   }
@@ -113,7 +119,9 @@ export class SetupScene extends Phaser.Scene {
 
   private setOpponent(opponent: MatchOptions["opponent"]): void {
     this.options.opponent = opponent;
-    this.tweens.add({ targets: this.commander, alpha: opponent === "hotseat" ? 0.4 : 1, duration: motionMs(200) });
+    this.tweens.add({ targets: this.commander, alpha: opponent === "ai" ? 1 : 0.4, duration: motionMs(200) });
+    this.rows.show(this.online, opponent === "online");
+    this.layout();
     this.changed();
   }
 
@@ -127,6 +135,8 @@ export class SetupScene extends Phaser.Scene {
   }
 
   private onKey(e: KeyboardEvent): void {
+    const isTypingCode = this.options.opponent === "online" && this.online.key(e);
+    if (isTypingCode) return;
     if (e.code === "Escape") this.back();
     if (e.code === "Enter" || e.code === "NumpadEnter") this.start();
   }
@@ -154,10 +164,12 @@ export class SetupScene extends Phaser.Scene {
   }
 
   private start(): void {
+    if (this.options.opponent === "online") return void this.online.go({ ...this.options });
     this.leave(() => this.game.events.emit("ui:start", { ...this.options }));
   }
 
   private back(): void {
+    this.online.cancel();
     this.leave(() => this.game.events.emit("ui:back"));
   }
 

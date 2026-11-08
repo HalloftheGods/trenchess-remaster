@@ -13,11 +13,13 @@ import { sfx } from "../audio/sfx";
 import { AiClient } from "./AiClient";
 import { FACTIONS } from "../render/art/unitArt";
 import { buildField, freshSeed, plainsField, type Field, type GameMode } from "./fields";
+import type { DuelChannel, DuelPacket } from "../net/duel";
+import { fitsBoard, matchingOrder, takeHalf } from "./online";
 
 export type { GameMode } from "./fields";
 
 export interface MatchOptions {
-  opponent: "ai" | "hotseat";
+  opponent: "ai" | "hotseat" | "online";
   difficulty: Difficulty;
   ordersPerTurn: number;
   mode: GameMode;
@@ -46,6 +48,12 @@ export class Match {
   private legal: Order[] = [];
   private busy = false;
   private ai = new AiClient();
+  /** Online only: the line to the other player, their finished deployment, and whether ours is sent. */
+  private duel: DuelChannel | null = null;
+  private remoteDeploy: { board: Cell[][]; terrain: Terrain[][] } | null = null;
+  private localReady = false;
+  /** Remote orders play one after another, never over an animation. */
+  private remoteQueue: Promise<void> = Promise.resolve();
 
   constructor(private boardView: BoardView, private units: UnitView, private hud: Hud) {}
 
@@ -82,10 +90,24 @@ export class Match {
     this.units.setVisibility((pos, u) => u.owner === 0 || grid[pos[0]][pos[1]], field.board);
   }
 
-  start(options: MatchOptions): void {
+  /** Starts a match against the player on the other end of `duel`. Both tabs pass the host's seed, so both build one field. */
+  startOnline(options: MatchOptions, duel: DuelChannel, seed: number): void {
+    this.duel?.close();
+    this.duel = duel;
+    this.remoteDeploy = null;
+    this.localReady = false;
+    this.remoteQueue = Promise.resolve();
+    duel.onPacket = (packet) => this.fromRemote(packet);
+    duel.onClosed = (reason) => this.duelClosed(duel, reason);
+    this.start({ ...options, opponent: "online" }, seed);
+    this.deployer = duel.seat;
+    if (this.phase === "deploy") this.refreshDeploy();
+  }
+
+  start(options: MatchOptions, seed: number = freshSeed()): void {
     this.options = options;
     setBoard(options.board);
-    this.show(buildField(options, freshSeed()));
+    this.show(buildField(options, seed));
     this.state = null;
     this.phase = "deploy";
     this.deployer = 0;
@@ -99,11 +121,14 @@ export class Match {
     return this.options.mode === "chi";
   }
 
+  /** Whether this tab gives orders for `p`. */
   isHuman(p: PlayerId): boolean {
+    if (this.options.opponent === "online") return p === (this.duel?.seat ?? 0);
     return p === 0 || this.options.opponent === "hotseat";
   }
 
   get viewer(): PlayerId {
+    if (this.options?.opponent === "online") return this.duel?.seat ?? 0;
     if (this.options?.opponent === "hotseat") return this.state?.current ?? this.deployer;
     return 0;
   }
@@ -134,6 +159,7 @@ export class Match {
 
   ready(): void {
     if (this.phase !== "deploy") return;
+    if (this.options.opponent === "online") return this.readyOnline();
     if (this.options.opponent === "hotseat" && this.deployer === 0) {
       this.deployer = 1;
       this.selected = null;
@@ -142,6 +168,57 @@ export class Match {
       return;
     }
     this.beginBattle();
+  }
+
+  private duelClosed(duel: DuelChannel, reason: string): void {
+    if (this.duel !== duel) return;
+    this.duel = null;
+    const isMidMatch = this.phase === "deploy" || this.phase === "battle";
+    if (isMidMatch) this.hud.banner("Opponent disconnected", reason);
+  }
+
+  /** Sends this tab's deployment, then starts once the other side's has arrived. */
+  private readyOnline(): void {
+    if (this.localReady || !this.duel) return;
+    this.localReady = true;
+    this.selected = null;
+    this.duel.send({ t: "deploy", player: this.duel.seat, board: this.board, terrain: this.terrain });
+    if (this.remoteDeploy) return this.mergeAndBegin();
+    this.boardView.clearMarkers();
+    this.hud.banner("Ready", "Waiting for your opponent to deploy");
+  }
+
+  private mergeAndBegin(): void {
+    takeHalf(this.board, this.terrain, this.remoteDeploy!, opponent(this.duel!.seat));
+    this.boardView.setTerrain(this.terrain);
+    this.units.sync(this.board);
+    this.beginBattle();
+  }
+
+  private fromRemote(packet: DuelPacket): void {
+    if (packet.t === "deploy") return this.takeDeploy(packet.player, packet.board, packet.terrain);
+    this.remoteQueue = this.remoteQueue.then(() => this.remotePlay(packet));
+  }
+
+  private takeDeploy(player: PlayerId, board: Cell[][], terrain: Terrain[][]): void {
+    const isTheirs = this.duel && player === opponent(this.duel.seat);
+    if (!isTheirs || !fitsBoard(board, terrain) || this.phase !== "deploy") return;
+    this.remoteDeploy = { board, terrain };
+    if (this.localReady) this.mergeAndBegin();
+  }
+
+  /** Plays the other player's move, and only an order this tab's own rules agree is legal. */
+  private async remotePlay(packet: DuelPacket): Promise<void> {
+    const s = this.state;
+    if (!s || this.phase !== "battle") return;
+    if (packet.t === "resign") {
+      s.outcome = { winner: this.duel?.seat ?? 0, reason: "resign" };
+      return this.finish();
+    }
+    if (this.isHuman(s.current)) return;
+    if (packet.t === "end-turn") return this.play(endTurn(s), cloneState(s).board);
+    const order = packet.t === "order" ? matchingOrder(legalOrders(s), packet.order) : null;
+    if (order) await this.execute(order);
   }
 
   private beginBattle(): void {
@@ -267,6 +344,7 @@ export class Match {
     if (!this.isHuman(s.current)) return;
     const order = this.selected && this.legal.find((o) => samePos(o.from, this.selected!) && samePos(o.to, cell));
     if (order) {
+      this.duel?.send({ t: "order", order });
       void this.execute(order);
       return;
     }
@@ -312,6 +390,7 @@ export class Match {
     const s = this.state;
     if (!s || this.busy || this.phase !== "battle" || !this.isHuman(s.current)) return;
     this.selected = null;
+    this.duel?.send({ t: "end-turn" });
     await this.play(endTurn(s), cloneState(s).board);
   }
 
@@ -336,7 +415,7 @@ export class Match {
     this.busy = false;
     if (s.outcome) return this.finish();
     this.refreshBattle();
-    if (!this.isHuman(s.current)) void this.aiTurn();
+    if (this.options.opponent === "ai" && !this.isHuman(s.current)) void this.aiTurn();
   }
 
   private async animate(e: TurnEvent, before: Cell[][]): Promise<void> {
@@ -408,6 +487,9 @@ export class Match {
     this.phase = "idle";
     this.state = null;
     this.ai.reset();
+    const duel = this.duel;
+    this.duel = null;
+    duel?.close();
     this.boardView.clearMarkers();
     this.boardView.setFog(null);
   }
