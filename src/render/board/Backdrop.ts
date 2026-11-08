@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { boardBounds, getProjection } from "../iso";
 import { PEAKS_H } from "../art/skyArt";
-import { PLINTH_ISO, PLINTH_MARGIN, PLINTH_TOP, type PlinthSpec } from "../art/plinthArt";
+import { PLINTH_MARGIN, plinthIso, plinthTop, type PlinthSpec } from "../art/plinthArt";
+import { BOARD_SIZE } from "../../engine/rules";
 import { backdrop, type BackdropMode } from "./backdropMode";
 
 interface Look {
@@ -39,8 +40,8 @@ export class Backdrop {
     this.stars = scene.add.tileSprite(0, 0, 4200, 4200, "sky-stars").setBlendMode("ADD").setAlpha(0.5).setDepth(-98);
     this.peaks = scene.add.image(0, 0, "sky-peaks").setOrigin(0.5, 1).setScale(1.4).setDepth(-97);
     this.haze = scene.add.image(0, 0, "glow").setBlendMode("ADD").setTint(0xf0b070).setScale(48, 1.3).setAlpha(0.08).setDepth(-96);
-    this.plinthIso = this.plinth(PLINTH_ISO);
-    this.plinthTop = this.plinth(PLINTH_TOP);
+    this.plinthIso = this.plinth(plinthIso(BOARD_SIZE));
+    this.plinthTop = this.plinth(plinthTop(BOARD_SIZE));
     this.relayout(0);
     this.setMode(backdrop.mode, 0);
   }
@@ -66,8 +67,15 @@ export class Backdrop {
     return this.scene.add.image(0, 0, spec.key).setOrigin(spec.anchorX / spec.width, spec.anchorY / spec.height).setDepth(-10);
   }
 
+  private fit(img: Phaser.GameObjects.Image, spec: PlinthSpec): void {
+    if (img.texture.key === spec.key) return;
+    img.setTexture(spec.key).setOrigin(spec.anchorX / spec.width, spec.anchorY / spec.height);
+  }
+
   /** Place the backdrop for the current projection: the horizon sits just behind the plinth's back edge. */
   relayout(duration: number): void {
+    this.fit(this.plinthIso, plinthIso(BOARD_SIZE));
+    this.fit(this.plinthTop, plinthTop(BOARD_SIZE));
     const b = boardBounds();
     const top = getProjection() === "top";
     const backEdge = b.centerY - b.height / 2 - PLINTH_MARGIN;

@@ -15,23 +15,31 @@ export interface PlinthSpec {
   /** Texture-space point that sits on the board's surface centre. */
   anchorX: number;
   anchorY: number;
+  /** Board size the plinth is carved for. */
+  n: number;
 }
 
-export const PLINTH_ISO: PlinthSpec = {
-  key: "plinth-iso",
-  width: 12 * TILE_W + 2 * PLINTH_MARGIN,
-  height: 12 * TILE_H + PLINTH_MARGIN + THICK + DROP,
-  anchorX: 6 * TILE_W + PLINTH_MARGIN,
-  anchorY: 6 * TILE_H + PLINTH_MARGIN / 2,
-};
+export const plinthIso = (n: number): PlinthSpec => ({
+  key: `plinth-iso-${n}`,
+  width: n * TILE_W + 2 * PLINTH_MARGIN,
+  height: n * TILE_H + PLINTH_MARGIN + THICK + DROP,
+  anchorX: (n / 2) * TILE_W + PLINTH_MARGIN,
+  anchorY: (n / 2) * TILE_H + PLINTH_MARGIN / 2,
+  n,
+});
 
-export const PLINTH_TOP: PlinthSpec = {
-  key: "plinth-top",
-  width: 12 * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
-  height: 12 * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
-  anchorX: 6 * TOP_TILE + PLINTH_MARGIN + DROP,
-  anchorY: 6 * TOP_TILE + PLINTH_MARGIN + DROP,
-};
+export const plinthTop = (n: number): PlinthSpec => ({
+  key: `plinth-top-${n}`,
+  width: n * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
+  height: n * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
+  anchorX: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
+  anchorY: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
+  n,
+});
+
+/** Specs for the Extended board, kept for callers that only need the default size. */
+export const PLINTH_ISO: PlinthSpec = plinthIso(12);
+export const PLINTH_TOP: PlinthSpec = plinthTop(12);
 
 const STONE_LIT = "#8e8475";
 const STONE_DIM = "#5c5247";
@@ -72,9 +80,9 @@ const contactShadow = (g: CanvasRenderingContext2D, path: () => void): void => {
   g.restore();
 };
 
-const drawIso = (g: CanvasRenderingContext2D): void => {
-  const { anchorX: cx, anchorY: cy, width, height } = PLINTH_ISO;
-  const hw = 6 * TILE_W + PLINTH_MARGIN;
+const drawIso = (g: CanvasRenderingContext2D, spec: PlinthSpec): void => {
+  const { anchorX: cx, anchorY: cy, width, height, n } = spec;
+  const hw = (n / 2) * TILE_W + PLINTH_MARGIN;
   const hh = hw / 2;
   // drop shadow onto the ground
   ellipse(g, cx, cy + hh * 0.35 + THICK, hw * 1.08, hh * 0.9 + THICK, "rgba(0,0,0,0.5)");
@@ -136,7 +144,7 @@ const drawIso = (g: CanvasRenderingContext2D): void => {
   rosette(g, cx, cy + hh - 19, 9, 4.5);
   rosette(g, cx - hw + 38, cy, 9, 4.5);
   rosette(g, cx + hw - 38, cy, 9, 4.5);
-  contactShadow(g, () => diamondPath(g, cx, cy, 12 * TILE_W + 6, 12 * TILE_H + 3));
+  contactShadow(g, () => diamondPath(g, cx, cy, n * TILE_W + 6, n * TILE_H + 3));
   g.restore();
   // bevel highlights: lit upper-left edges, dark lower-right
   g.lineWidth = 2;
@@ -154,9 +162,9 @@ const drawIso = (g: CanvasRenderingContext2D): void => {
   g.stroke();
 };
 
-const drawTop = (g: CanvasRenderingContext2D): void => {
-  const { anchorX: cx, anchorY: cy, width, height } = PLINTH_TOP;
-  const half = 6 * TOP_TILE + PLINTH_MARGIN;
+const drawTop = (g: CanvasRenderingContext2D, spec: PlinthSpec): void => {
+  const { anchorX: cx, anchorY: cy, width, height, n } = spec;
+  const half = (n / 2) * TOP_TILE + PLINTH_MARGIN;
   g.filter = "blur(12px)";
   g.fillStyle = "rgba(0,0,0,0.6)";
   g.fillRect(cx - half + 10, cy - half + 14, half * 2 + 4, half * 2 + 6);
@@ -179,7 +187,7 @@ const drawTop = (g: CanvasRenderingContext2D): void => {
   for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) rosette(g, cx + sx * (half - 19), cy + sy * (half - 19), 7, 7);
   contactShadow(g, () => {
     g.beginPath();
-    g.rect(cx - 6 * TOP_TILE - 3, cy - 6 * TOP_TILE - 3, 12 * TOP_TILE + 6, 12 * TOP_TILE + 6);
+    g.rect(cx - (n / 2) * TOP_TILE - 3, cy - (n / 2) * TOP_TILE - 3, n * TOP_TILE + 6, n * TOP_TILE + 6);
   });
   g.restore();
   g.lineWidth = 2;
@@ -197,7 +205,13 @@ const drawTop = (g: CanvasRenderingContext2D): void => {
   g.stroke();
 };
 
+export const PLINTH_SIZES = [8, 12];
+
 export const paintPlinth = (scene: Phaser.Scene): void => {
-  paint(scene, PLINTH_ISO.key, PLINTH_ISO.width, PLINTH_ISO.height, drawIso);
-  paint(scene, PLINTH_TOP.key, PLINTH_TOP.width, PLINTH_TOP.height, drawTop);
+  for (const n of PLINTH_SIZES) {
+    const iso = plinthIso(n);
+    const top = plinthTop(n);
+    paint(scene, iso.key, iso.width, iso.height, (g) => drawIso(g, iso));
+    paint(scene, top.key, top.width, top.height, (g) => drawTop(g, top));
+  }
 };

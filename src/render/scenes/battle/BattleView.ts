@@ -103,7 +103,7 @@ export class BattleView implements ViewApi {
     const padW = top ? 140 : 120;
     const padH = top ? 160 : 300;
     const setup = where === "setup";
-    const zoom = Phaser.Math.Clamp(Math.min(usable / (b.width + padW), h / (b.height + padH + (setup ? 80 : 0))), ZOOM_MIN, 1.6);
+    const zoom = Phaser.Math.Clamp(Math.min(usable / (b.width + padW), h / (b.height + padH + (setup ? 80 : 0))), ZOOM_MIN, setup ? 1.2 : 1.6);
     const shift = (w / 2 - usable / 2 - (setup ? 110 : 0)) / zoom;
     const lift = (top ? 0 : 50) + (setup ? 90 / zoom : 0);
     return { x: b.centerX + shift, y: b.centerY - lift, zoom };

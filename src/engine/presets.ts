@@ -1,5 +1,6 @@
 import type { Pos, Terrain } from "./types";
-import { BOARD_SIZE } from "./rules";
+/** Presets are drawn for the Extended board; Classic games use a random battlefield instead. */
+const BOARD_SIZE = 12;
 import { emptyGrid } from "./game";
 import { mirrorPos } from "./setup";
 
