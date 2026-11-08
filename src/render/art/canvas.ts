@@ -9,7 +9,17 @@ export const paint = (scene: Phaser.Scene, key: string, w: number, h: number, pa
   canvas.height = h;
   const g = canvas.getContext("2d")!;
   painter(g, w, h);
-  scene.textures.addCanvas(key, canvas);
+  addPainted(scene, key, canvas);
+};
+
+/**
+ * Registers a finished canvas as a plain image texture. `textures.addCanvas` would wrap it in a
+ * CanvasTexture, whose constructor reads every pixel back with getImageData (a GPU→CPU stall per
+ * texture, two hundred of them at boot) and keeps the copy; nothing here reads texture pixels.
+ * Phaser's runtime accepts a canvas where its types ask for an image.
+ */
+export const addPainted = (scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement): void => {
+  scene.textures.addImage(key, canvas as unknown as HTMLImageElement);
 };
 
 export const rand = (seed: number): (() => number) => {

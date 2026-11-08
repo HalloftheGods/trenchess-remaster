@@ -34,6 +34,9 @@ let chessmen: Chessmen;
 let lastOptions: MatchOptions | null = null;
 const lifetime = new AbortController();
 
+/** Advances the inline boot cover's progress bar and status line (index.html); a no-op once the cover is gone. */
+const bootStep = (fraction: number, label: string): void => window.__boot?.step(fraction, label);
+
 const title = (): TitleScene => game.scene.getScene("title") as TitleScene;
 const overlay = (): OverlayScene => game.scene.getScene("overlay") as OverlayScene;
 
@@ -224,16 +227,22 @@ const bindMusic = (): void => {
   new Backdrop($("#backdrop"), () => music.levels(), lifetime.signal);
 };
 
-/** The inline boot screen in index.html covers the page until the engine has painted and the splash is up. */
+/**
+ * The inline boot cover in index.html shows the studio card until the splash scene has drawn its
+ * own copy underneath (`ui:splash-shown`), or until the splash is skipped (`ui:splash-done`, as with
+ * `?nosplash`). Fading only then is what keeps the board from flashing between the two.
+ */
 const liftBootScreen = (): void => {
-  document.body.classList.remove("booting");
   const cover = document.getElementById("boot");
   if (!cover) return;
+  bootStep(1, "");
+  document.body.classList.remove("booting");
   cover.classList.add("out");
   window.setTimeout(() => cover.remove(), 500);
 };
 
 const boot = (s: BattleScene): void => {
+  bootStep(0.85, "Setting the board");
   scene = s;
   loadTheme();
   s.backdrop.setMode(loadBackdropMode(), 0);
@@ -262,11 +271,13 @@ const boot = (s: BattleScene): void => {
   game.scene.add("title", TitleScene, false);
   game.scene.add("setup", SetupScene, false);
   game.scene.add("hello", HelloScene, false);
-  game.scene.add("splash", SplashScene, true);
-  liftBootScreen();
+  game.events.once("ui:splash-shown", liftBootScreen);
+  game.events.once("ui:splash-done", liftBootScreen);
+  game.scene.add("splash", SplashScene, true, { handoff: true });
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("dev")) void import("./dev/devPanel").then((m) => m.mountDevPanel(game));
 };
 
+bootStep(0.35, "Starting the engine");
 game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: "stage",
@@ -275,12 +286,18 @@ game = new Phaser.Game({
   scene: [],
   callbacks: {
     postBoot: (g) => {
-      g.scene.add("battle", BattleScene, true, {
-        ready: boot,
-        click: (cell: [number, number]) => match?.click(cell),
-        cancel: () => match?.cancel(),
-        hover: (cell: [number, number] | null) => match?.hover(cell),
-      });
+      bootStep(0.55, "Painting the battlefield");
+      // Painting every texture is one long synchronous task: let the cover paint that status line first.
+      requestAnimationFrame(() =>
+        window.setTimeout(() => {
+          g.scene.add("battle", BattleScene, true, {
+            ready: boot,
+            click: (cell: [number, number]) => match?.click(cell),
+            cancel: () => match?.cancel(),
+            hover: (cell: [number, number] | null) => match?.hover(cell),
+          });
+        }, 0),
+      );
     },
   },
 });

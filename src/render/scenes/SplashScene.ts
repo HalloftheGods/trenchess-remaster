@@ -2,26 +2,21 @@ import Phaser from "phaser";
 import omegaUrl from "../../assets/brand/hall-of-the-gods.webp";
 import { paintUi } from "../ui/uiArt";
 import { COLOR, FONT, fontsReady, reducedMotion } from "../ui/fonts";
+import { splashTimings } from "./splashTimings";
 
 export const OMEGA_KEY = "brand-omega";
 
-const FADE_IN = 400;
-const HOLD = 1600;
-const FADE_OUT = 500;
-const HOLD_REDUCED = 1000;
-
-interface Timings {
-  fadeIn: number;
-  hold: number;
-  fadeOut: number;
+export interface SplashData {
+  /** True at boot: the inline cover in index.html is showing this same card and hands it over in place. */
+  handoff?: boolean;
 }
-
-const timings = (): Timings => (reducedMotion() ? { fadeIn: 0, hold: HOLD_REDUCED, fadeOut: 0 } : { fadeIn: FADE_IN, hold: HOLD, fadeOut: FADE_OUT });
 
 /**
  * Hall of the Gods, Inc. studio splash: black, the gold Omega, "PRESENTED BY", the studio name
  * with a glow, scanlines and a vignette. Any key or pointer skips it; `?nosplash` skips it entirely.
- * Emits `ui:splash-done` on the game events and stops itself.
+ * At boot the inline cover shows the same card while the game loads; once this scene has drawn its
+ * own, it emits `ui:splash-shown` so the cover can fade, and the time already spent counts against
+ * the hold. Emits `ui:splash-done` on the game events and stops itself.
  */
 export class SplashScene extends Phaser.Scene {
   private content!: Phaser.GameObjects.Container;
@@ -29,9 +24,15 @@ export class SplashScene extends Phaser.Scene {
   private scan!: Phaser.GameObjects.TileSprite;
   private vignette!: Phaser.GameObjects.Image;
   private done = false;
+  private handoff = false;
 
   constructor() {
     super("splash");
+  }
+
+  init(data?: SplashData): void {
+    this.handoff = data?.handoff ?? false;
+    this.done = false;
   }
 
   preload(): void {
@@ -85,9 +86,11 @@ export class SplashScene extends Phaser.Scene {
   private play(): void {
     if (this.done) return;
     this.build();
-    const t = timings();
+    // The cover has been up since the page was first painted, so performance.now() is how long it showed the card.
+    const t = splashTimings({ shownFor: performance.now(), handoff: this.handoff, reduced: reducedMotion() });
     this.content.setAlpha(t.fadeIn ? 0 : 1);
-    this.tweens.add({ targets: this.content, alpha: 1, duration: t.fadeIn, ease: "Sine.Out" });
+    if (t.fadeIn) this.tweens.add({ targets: this.content, alpha: 1, duration: t.fadeIn, ease: "Sine.Out" });
+    this.events.once(Phaser.Scenes.Events.RENDER, () => this.game.events.emit("ui:splash-shown"));
     this.time.delayedCall(t.fadeIn + t.hold, () => this.leave(t.fadeOut));
   }
 

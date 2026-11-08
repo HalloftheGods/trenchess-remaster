@@ -13,6 +13,10 @@ interface Look {
   haze: number;
 }
 
+/** The star field covers STARS_QUAD × STARS_SCALE world units (4200) around its centre. */
+const STARS_QUAD = 420;
+const STARS_SCALE = 10;
+
 /** How far above the plinth's back edge the horizon sits, per projection. */
 const HORIZON_GAP: Record<Projection, number> = { iso: 30, front: 60, top: 140 };
 
@@ -37,7 +41,16 @@ export class Backdrop {
   constructor(private scene: Phaser.Scene) {
     this.dome = scene.add.image(0, 0, skyKey("dome")).setOrigin(0.5, 0.97).setScale(6).setDepth(-100);
     this.ground = scene.add.graphics().setDepth(-99);
-    this.stars = scene.add.tileSprite(0, 0, 4200, 4200, skyKey("stars")).setBlendMode("ADD").setAlpha(0.5).setDepth(-98);
+    // A small quad scaled up: a TileSprite allocates (and uploads) a scratch canvas of its own
+    // width × height even under WebGL, where it is never drawn into. The tile scale cancels the
+    // object scale, so the stars tile at the texture's native size over a 4200 × 4200 sky.
+    this.stars = scene.add
+      .tileSprite(0, 0, STARS_QUAD, STARS_QUAD, skyKey("stars"))
+      .setScale(STARS_SCALE)
+      .setTileScale(1 / STARS_SCALE)
+      .setBlendMode("ADD")
+      .setAlpha(0.5)
+      .setDepth(-98);
     this.peaks = scene.add.image(0, 0, skyKey("peaks")).setOrigin(0.5, 1).setScale(1.4).setDepth(-97);
     this.haze = scene.add.image(0, 0, "glow").setBlendMode("ADD").setScale(48, 1.3).setAlpha(0.08).setDepth(-96);
     this.plinthIso = this.plinth(plinthIso(BOARD_SIZE));
