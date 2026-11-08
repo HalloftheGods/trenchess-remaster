@@ -34,8 +34,13 @@ const unitScore = (s: GameState, type: keyof typeof UNIT_VALUE, owner: PlayerId,
   return v;
 };
 
+const outcomeScore = (winner: PlayerId | null, me: PlayerId): number => {
+  if (winner === null) return 0;
+  return winner === me ? WIN : -WIN;
+};
+
 export const evaluate = (s: GameState, me: PlayerId): number => {
-  if (s.outcome) return s.outcome.winner === null ? 0 : s.outcome.winner === me ? WIN : -WIN;
+  if (s.outcome) return outcomeScore(s.outcome.winner, me);
   let score = 0;
   forEachUnit(s.board, (u, [r, c]) => {
     const v = unitScore(s, u.type, u.owner, r, c);

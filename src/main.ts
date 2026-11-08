@@ -49,15 +49,17 @@ const toMenu = (): void => {
 
 let hud: Hud;
 
+const lifetime = new AbortController();
+
 const bindUi = (): void => {
   const form = $<HTMLFormElement>("#setup");
   const syncDifficulty = () => $("#difficulty-set").classList.toggle("dim", readOptions(form).opponent === "hotseat");
-  form.addEventListener("change", syncDifficulty);
+  form.addEventListener("change", syncDifficulty, { signal: lifetime.signal });
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     sfx.select();
     startMatch(readOptions(form));
-  });
+  }, { signal: lifetime.signal });
   const actions: Record<string, () => void> = {
     randomize: () => match.randomizeTerrain(),
     clear: () => match.clearTerrain(),
@@ -74,14 +76,14 @@ const bindUi = (): void => {
   document.addEventListener("click", (e) => {
     const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]")?.dataset.act;
     if (act && actions[act]) actions[act]();
-  });
+  }, { signal: lifetime.signal });
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space" && match.phase === "battle") {
       e.preventDefault();
       void match.endTurnNow();
     }
     if (e.code === "Escape") match.cancel();
-  });
+  }, { signal: lifetime.signal });
 };
 
 const boot = (s: BattleScene): void => {

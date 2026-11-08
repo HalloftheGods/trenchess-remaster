@@ -14,6 +14,13 @@ interface Token {
   bob: Phaser.Tweens.Tween;
 }
 
+interface Leg {
+  to: Pos;
+  duration: number;
+  arc: number;
+  capture: boolean;
+}
+
 interface Proxy {
   r: number;
   c: number;
@@ -165,7 +172,7 @@ export class UnitView {
     return new Promise((res) => this.scene.time.delayedCall(ms, res));
   }
 
-  private legs(order: Order): { to: Pos; duration: number; arc: number; capture: boolean }[] {
+  private legs(order: Order): Leg[] {
     const isCapture = (p: Pos) => order.captures.some((c) => c[0] === p[0] && c[1] === p[1]);
     if (order.style === "slide") return order.path.map((to) => ({ to, duration: 150, arc: 6, capture: isCapture(to) }));
     if (order.style === "joust") return [{ to: order.path[0], duration: 220, arc: 40, capture: isCapture(order.path[0]) }, { to: order.to, duration: 220, arc: 30, capture: isCapture(order.to) }];

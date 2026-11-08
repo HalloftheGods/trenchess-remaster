@@ -157,8 +157,8 @@ export class Hud {
   gameOver(outcome: Outcome, options: MatchOptions, s: GameState): void {
     const over = $("#over");
     const title = outcome.winner === null ? "Stalemate" : `${FACTIONS[outcome.winner].name} victorious`;
-    const solo = options.opponent === "ai";
-    const flavor = solo && outcome.winner === 0 ? "Glorious victory, Commander!" : solo && outcome.winner === 1 ? "Your army has been routed." : "";
+    const flavors: Record<string, string> = { "0": "Glorious victory, Commander!", "1": "Your army has been routed." };
+    const flavor = options.opponent === "ai" ? flavors[String(outcome.winner)] ?? "" : "";
     $(".over-title", over).textContent = title;
     $(".over-text", over).textContent = `${REASONS[outcome.reason]} ${flavor} (${s.turn} turns)`;
     over.classList.remove("hidden");
