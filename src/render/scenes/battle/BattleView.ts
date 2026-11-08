@@ -1,0 +1,147 @@
+import Phaser from "phaser";
+import { boardBounds, getProjection, getRotation, setProjection, setRotation, type Projection } from "../../iso";
+import type { BattleScene } from "../BattleScene";
+
+export type Framing = "center" | "setup";
+
+/** The View API from docs/OVERHAUL.md: rotation, projection, camera framing and the title drift. */
+export interface ViewApi {
+  rotate(delta: 1 | -1): Promise<void>;
+  setProjection(p: Projection): Promise<void>;
+  readonly projection: Projection;
+  zoomBy(factor: number): void;
+  panBy(dx: number, dy: number): void;
+  reset(): void;
+  frame(where: Framing): void;
+  setDrift(on: boolean): void;
+  setDiorama(on: boolean): void;
+}
+
+const ROTATE_MS = 420;
+const PROJECT_MS = 500;
+const FRAME_MS = 450;
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 2.2;
+
+interface Framed {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+export class BattleView implements ViewApi {
+  private where: Framing = "center";
+  private drift = true;
+  private orbit = 0;
+  private home: Framed = { x: 0, y: 0, zoom: 1 };
+  private tilt: Phaser.FX.Bokeh | null = null;
+  private busy: Promise<void> = Promise.resolve();
+
+  constructor(private scene: BattleScene) {}
+
+  get projection(): Projection {
+    return getProjection();
+  }
+
+  private get cam(): Phaser.Cameras.Scene2D.Camera {
+    return this.scene.cameras.main;
+  }
+
+  /** Serialise view morphs so a rotate during a projection swap cannot interleave tweens. */
+  private queue(run: () => Promise<void>): Promise<void> {
+    this.busy = this.busy.then(run, run);
+    return this.busy;
+  }
+
+  rotate(delta: 1 | -1): Promise<void> {
+    return this.queue(() => {
+      setRotation(getRotation() + delta);
+      return this.morph(ROTATE_MS, false);
+    });
+  }
+
+  setProjection(p: Projection): Promise<void> {
+    return this.queue(() => {
+      if (p === getProjection()) return Promise.resolve();
+      setProjection(p);
+      return this.morph(PROJECT_MS, true);
+    });
+  }
+
+  private morph(duration: number, reframe: boolean): Promise<void> {
+    const s = this.scene;
+    s.board.clearMarkers();
+    s.board.clearPreview();
+    s.board.relayout(duration);
+    s.units.relayoutAll(duration);
+    if (reframe) this.frame(this.where, duration);
+    return new Promise((resolve) => s.time.delayedCall(duration, resolve));
+  }
+
+  zoomBy(factor: number): void {
+    this.cam.setZoom(Phaser.Math.Clamp(this.cam.zoom * factor, ZOOM_MIN, ZOOM_MAX));
+  }
+
+  panBy(dx: number, dy: number): void {
+    this.cam.scrollX += dx / this.cam.zoom;
+    this.cam.scrollY += dy / this.cam.zoom;
+  }
+
+  reset(): void {
+    this.frame(this.where, FRAME_MS);
+  }
+
+  /** Compute where the camera rests for a framing: the board filling the usable width, left 60% for "setup". */
+  private framed(where: Framing): Framed {
+    const w = this.scene.scale.width;
+    const h = this.scene.scale.height;
+    const b = boardBounds();
+    const usable = where === "setup" ? w * 0.6 : w;
+    const top = getProjection() === "top";
+    const padW = top ? 180 : 170;
+    const padH = top ? 180 : 330;
+    const zoom = Phaser.Math.Clamp(Math.min(usable / (b.width + padW), h / (b.height + padH)), ZOOM_MIN, 1.6);
+    const shift = (w / 2 - usable / 2) / zoom;
+    return { x: b.centerX + shift, y: b.centerY - (top ? 0 : 60), zoom };
+  }
+
+  frame(where: Framing, duration = FRAME_MS): void {
+    this.where = where;
+    this.home = this.framed(where);
+    if (duration <= 0) {
+      this.cam.setZoom(this.home.zoom);
+      this.cam.centerOn(this.home.x, this.home.y);
+      return;
+    }
+    this.cam.pan(this.home.x, this.home.y, duration, "Cubic.easeInOut", true);
+    this.cam.zoomTo(this.home.zoom, duration, "Cubic.easeInOut", true);
+  }
+
+  /** Instant re-fit for the current framing (window resize). */
+  refit(): void {
+    this.frame(this.where, 0);
+  }
+
+  setDrift(on: boolean): void {
+    this.drift = on;
+    if (!on) this.refit();
+  }
+
+  /** Tilt-shift for the diorama look on the title; off during play for readability. WebGL only. */
+  setDiorama(on: boolean): void {
+    const fx = this.cam.postFX;
+    if (!fx || !this.scene.webgl) return;
+    if (on && !this.tilt) this.tilt = fx.addTiltShift(0.6, 0.8, 0.15, 1, 1, 1);
+    if (!on && this.tilt) {
+      fx.remove(this.tilt);
+      this.tilt = null;
+    }
+  }
+
+  /** Slow orbit around the home framing; allocation-free. */
+  update(dt: number): void {
+    if (!this.drift || this.cam.panEffect.isRunning) return;
+    this.orbit += dt / 4000;
+    this.cam.centerOn(this.home.x + Math.sin(this.orbit) * 60, this.home.y + Math.cos(this.orbit * 0.7) * 25);
+  }
+}

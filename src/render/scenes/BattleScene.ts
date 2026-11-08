@@ -4,11 +4,20 @@ import { inBounds } from "../../engine/rules";
 import { BoardView } from "../board/BoardView";
 import { UnitView } from "../board/UnitView";
 import { Fx } from "../board/Fx";
-import { TILE_H, TOP_LAYER, toCell, toScreen } from "../iso";
+import { Lighting } from "../board/Lighting";
+import { Ambient } from "../board/Ambient";
+import { Backdrop } from "../board/Backdrop";
+import { TOP_LAYER, toCell } from "../iso";
 import { paintTerrain } from "../art/terrainArt";
 import { paintDecor } from "../art/decorArt";
 import { paintUnits } from "../art/unitArt";
 import { paintFx } from "../art/fxArt";
+import { paintSky } from "../art/skyArt";
+import { paintPlinth } from "../art/plinthArt";
+import { BattleView } from "./battle/BattleView";
+
+export type { Projection } from "../iso";
+export type { ViewApi, Framing } from "./battle/BattleView";
 
 export interface BattleHooks {
   ready: (scene: BattleScene) => void;
@@ -21,11 +30,14 @@ export class BattleScene extends Phaser.Scene {
   board!: BoardView;
   units!: UnitView;
   fx!: Fx;
+  lighting!: Lighting;
+  ambient!: Ambient;
+  backdrop!: Backdrop;
+  view!: BattleView;
+  webgl = false;
   private hooks!: BattleHooks;
   private lastCell = "";
   private dragging = false;
-  private orbit = 0;
-  private drift = true;
 
   constructor() {
     super("battle");
@@ -36,42 +48,60 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.webgl = this.sys.renderer.type === Phaser.WEBGL;
     paintTerrain(this);
     paintDecor(this);
     paintUnits(this);
     paintFx(this);
-    this.plinth();
-    this.fx = new Fx(this);
+    paintSky(this);
+    paintPlinth(this);
+    this.backdrop = new Backdrop(this);
+    this.fx = new Fx(this, this.fxLayer());
     this.board = new BoardView(this);
+    this.lighting = new Lighting(this);
+    this.ambient = new Ambient(this);
+    this.board.onTerrainChanged = () => this.rebuildAmbience();
+    this.board.onRelayout = (duration) => {
+      this.backdrop.relayout(duration);
+      this.lighting.dim(duration);
+      if (duration > 0) this.time.delayedCall(duration, () => this.rebuildAmbience());
+      else this.rebuildAmbience();
+    };
     this.units = new UnitView(this, this.board, this.fx);
+    this.view = new BattleView(this);
     this.clouds();
+    this.postFx();
     this.time.addEvent({ delay: 450, loop: true, callback: () => this.desertHeat() });
     this.fit();
     this.scale.on("resize", () => this.fit());
     this.bindInput();
     this.hooks.ready(this);
+    this.exposeTestHook();
   }
 
-  private plinth(): void {
-    const top = toScreen(0, 0);
-    const bottom = toScreen(11, 11);
-    const g = this.add.graphics().setDepth(-10);
-    g.fillStyle(0x000000, 0.35);
-    g.fillEllipse(0, (top.y + bottom.y) / 2 + 40, 1250, 640);
-    const rim = this.add.graphics().setDepth(-5);
-    const l = toScreen(11, 0);
-    const r = toScreen(0, 11);
-    const pad = 10;
-    rim.fillStyle(0x3b2a1c, 1);
-    rim.fillPoints(
-      [
-        new Phaser.Math.Vector2(top.x, top.y - TILE_H / 2 - pad),
-        new Phaser.Math.Vector2(r.x + 42 + pad * 2, r.y),
-        new Phaser.Math.Vector2(bottom.x, bottom.y + TILE_H / 2 + pad + 30),
-        new Phaser.Math.Vector2(l.x - 42 - pad * 2, l.y),
-      ],
-      true,
-    );
+  /** `window.__tc.scene` for Playwright checks (the only sanctioned place for test hooks). */
+  private exposeTestHook(): void {
+    const w = window as unknown as { __tc?: Record<string, unknown> };
+    w.__tc = Object.assign(w.__tc ?? {}, { scene: this });
+  }
+
+  private rebuildAmbience(): void {
+    this.lighting.rebuild(this.board);
+    this.ambient.rebuild(this.board);
+  }
+
+  /** A layer for the hit effects so one mild bloom lights them all (WebGL only). */
+  private fxLayer(): Phaser.GameObjects.Layer | null {
+    if (!this.webgl) return null;
+    const layer = this.add.layer().setDepth(TOP_LAYER);
+    layer.postFX.addBloom(0xffffff, 1, 1, 0.9, 1.15, 4);
+    return layer;
+  }
+
+  private postFx(): void {
+    const cam = this.cameras.main;
+    if (!this.webgl || !cam.postFX) return;
+    cam.postFX.addVignette(0.5, 0.5, 0.72, 0.45);
   }
 
   private clouds(): void {
@@ -89,25 +119,18 @@ export class BattleScene extends Phaser.Scene {
     this.fx.heat(x + Phaser.Math.Between(-18, 18), y);
   }
 
+  /** Instant re-fit of the camera for the current framing. */
   fit(): void {
-    const cam = this.cameras.main;
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const zoom = Math.min(w / 1180, h / 760);
-    cam.setZoom(Phaser.Math.Clamp(zoom, 0.4, 1.6));
-    cam.centerOn(0, toScreen(5.5, 5.5).y + 10);
+    this.view.refit();
   }
 
   setDrift(on: boolean): void {
-    this.drift = on;
-    if (!on) this.fit();
+    this.view.setDrift(on);
   }
 
   update(_t: number, dt: number): void {
-    if (!this.drift) return;
-    this.orbit += dt / 4000;
-    const cam = this.cameras.main;
-    cam.centerOn(Math.sin(this.orbit) * 60, toScreen(5.5, 5.5).y + Math.cos(this.orbit * 0.7) * 25);
+    this.backdrop.update(dt);
+    this.view.update(dt);
   }
 
   private cellAt(p: Phaser.Input.Pointer): Pos | null {
@@ -120,9 +143,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       if (p.rightButtonDown() || p.middleButtonDown()) {
-        const cam = this.cameras.main;
-        cam.scrollX -= (p.x - p.prevPosition.x) / cam.zoom;
-        cam.scrollY -= (p.y - p.prevPosition.y) / cam.zoom;
+        this.view.panBy(p.prevPosition.x - p.x, p.prevPosition.y - p.y);
         this.dragging = true;
         return;
       }
@@ -143,8 +164,7 @@ export class BattleScene extends Phaser.Scene {
       if (p.rightButtonReleased() && !this.dragging) this.hooks.cancel();
     });
     this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
-      const cam = this.cameras.main;
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.4, 2.2));
+      this.view.zoomBy(dy > 0 ? 0.9 : 1.1);
     });
   }
 }

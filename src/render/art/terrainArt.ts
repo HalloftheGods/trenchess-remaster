@@ -2,6 +2,9 @@ import Phaser from "phaser";
 import type { Terrain } from "../../engine/types";
 import { ELEVATION, HEADROOM, SLAB, TILE_H, TILE_W } from "../iso";
 import { diamondPath, ellipse, paint, rand, shade } from "./canvas";
+import { paintTerrainTop } from "./terrainTopArt";
+
+export { tileTopKey, TOP_VARIANTS } from "./terrainTopArt";
 
 export const TILE_TEX_H = HEADROOM + TILE_H + SLAB + 4;
 export const TILE_ORIGIN_Y = (HEADROOM + TILE_H / 2) / TILE_TEX_H;
@@ -133,10 +136,11 @@ const drawTile = (terrain: Terrain, light: boolean, seed: number) => (g: CanvasR
   const r = rand(seed);
   drawSides(g, top, p);
   diamondPath(g, CX, top, TILE_W, TILE_H);
-  const grad = g.createLinearGradient(CX - TILE_W / 2, top, CX + TILE_W / 2, top);
-  const base = shade(p.top, light ? 0.06 : -0.13);
-  grad.addColorStop(0, base);
-  grad.addColorStop(1, base);
+  // warm key light from the upper-left: lit corner brighter, far corner cooler
+  const grad = g.createLinearGradient(CX - TILE_W / 2, top - TILE_H / 2, CX + TILE_W / 2, top + TILE_H / 2);
+  const base = light ? 0.06 : -0.13;
+  grad.addColorStop(0, shade(p.top, base + 0.05));
+  grad.addColorStop(1, shade(p.top, base - 0.06));
   g.fillStyle = grad;
   g.fill();
   speckle(g, top, p.speck, 40, r);
@@ -149,6 +153,7 @@ const drawTile = (terrain: Terrain, light: boolean, seed: number) => (g: CanvasR
 export const tileKey = (t: Terrain, light: boolean, v: number): string => `tile-${t}-${light ? "l" : "d"}-${v}`;
 
 export const paintTerrain = (scene: Phaser.Scene): void => {
+  paintTerrainTop(scene);
   const kinds: Terrain[] = ["flat", "forest", "swamp", "mountain", "desert"];
   kinds.forEach((t, ti) => {
     for (let v = 0; v < VARIANTS; v++) {
