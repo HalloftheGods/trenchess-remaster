@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { Terrain, Unit } from "../../../engine/types";
+import { addPainted } from "../../art/canvas";
 import { FACTIONS, theme } from "../../art/unitArt";
 import { FIELDS } from "./fields";
 import { FONT, FONT_H, FONT_W } from "./font";
@@ -19,7 +20,7 @@ const canvasTexture = (scene: Phaser.Scene, key: string, w: number, h: number, d
   const g = c.getContext("2d")!;
   g.imageSmoothingEnabled = false;
   draw(g);
-  scene.textures.addCanvas(key, c);
+  addPainted(scene, key, c);
   scene.textures.get(key).setFilter(NEAREST);
   return key;
 };
