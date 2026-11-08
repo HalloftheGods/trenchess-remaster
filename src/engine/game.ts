@@ -45,7 +45,7 @@ const resolveOrder = (s: GameState, order: Order): Unit[] => {
     s.board[r][c] = null;
   }
   s.board[order.from[0]][order.from[1]] = null;
-  const placed = order.promotes ? { ...mover, type: "queen" as const } : mover;
+  const placed: Unit = { ...mover, moved: true, type: order.promotes ? "queen" : mover.type };
   s.board[order.to[0]][order.to[1]] = placed;
   s.acted.push(mover.id);
   s.fallen[opponent(mover.owner)].push(...victims);

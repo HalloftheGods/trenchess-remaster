@@ -115,6 +115,24 @@ describe("upgraded moves", () => {
     expect(t).not.toContain("8,5");
   });
 
+  it("lets an unmoved pawn jumpstart two squares, once", () => {
+    const { board, terrain } = blank();
+    put(board, [9, 4], "pawn", 0);
+    expect(targets(board, terrain, [9, 4])).toContain("7,4");
+    put(board, [8, 5], "pawn", 0);
+    put(board, [7, 5], "rook", 1);
+    expect(targets(board, terrain, [8, 5])).not.toContain("6,5");
+    put(board, [0, 0], "king", 0);
+    put(board, [0, 11], "king", 1);
+    const s = game(board, terrain);
+    const jump = legalOrders(s).find((o) => o.from[0] === 9 && o.to[0] === 7)!;
+    applyOrder(s, jump);
+    expect(s.board[7][4]?.moved).toBe(true);
+    s.current = 0;
+    s.ordersLeft = 1;
+    expect(targets(s.board, s.terrain, [7, 4])).not.toContain("5,4");
+  });
+
   it("promotes pawns on the far rank", () => {
     const { board, terrain } = blank();
     put(board, [1, 6], "pawn", 0);

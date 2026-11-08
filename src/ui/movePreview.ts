@@ -16,7 +16,7 @@ const CLASSIC: Record<UnitType, (dr: number, dc: number) => boolean> = {
   rook: (dr, dc) => (dr === 0 || dc === 0) && Math.abs(dr) + Math.abs(dc) > 0,
   bishop: (dr, dc) => Math.abs(dr) === Math.abs(dc),
   knight: (dr, dc) => Math.abs(dr * dc) === 2,
-  pawn: (dr) => dr === -1,
+  pawn: (dr, dc) => dr === -1 || (dr === -2 && dc === 0),
 };
 
 const SANCTUARY: Partial<Record<Terrain, UnitType[]>> = {

@@ -97,6 +97,8 @@ const pawnMoves = (ctx: Ctx): void => {
     if (inBounds(r, c) && isFoe(ctx.board[r][c], owner)) ctx.out.push(makeOrder(ctx, [r, c], style, [[r, c]], [[r, c]]));
   };
   tryMove(r0 + f, c0, "step");
+  const pathClear = inBounds(r0 + f, c0) && ctx.board[r0 + f][c0] === null;
+  if (!ctx.unit.moved && pathClear) tryMove(r0 + 2 * f, c0, "jump");
   tryCapture(r0 + f, c0 + 1, "step");
   tryCapture(r0 + f, c0 - 1, "step");
   tryMove(r0 - 2 * f, c0, "flip");

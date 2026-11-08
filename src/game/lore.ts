@@ -70,7 +70,7 @@ export const UNIT_LORE: Record<UnitType, UnitLore> = {
     classicMove: "The Forward March",
     color: "#3b82f6",
     ability: "Double-back Flip",
-    moves: "Moves like a Pawn, but can Backflip 2 squares backward (or 2 back and 1 aside to capture). Crosses any terrain. Promotes on the far edge.",
+    moves: "Moves like a Pawn (two squares on its first step), but can Backflip 2 squares backward (or 2 back and 1 aside to capture). Crosses any terrain. Promotes on the far edge.",
   },
 };
 
