@@ -174,7 +174,7 @@ const TREE: Grid = ["..ggg..", ".gGGgg.", "gGGgggg", "gGgggdg", ".gdgdd.", "...t
 const KING: Grid = ["...#...", "..###..", "...#...", "..ooo..", "..oOo..", "...o...", "..oOo..", ".ooOoo.", "ooooooo"];
 
 /** The corner seal: a gold disc stamped with a crown. */
-const SEAL: Grid = [".ggggg.", "gLLLLLg", "g*G*G*g", "g*****g", "gG***Gg", "gGGGGGg", ".ggggg."];
+const SEAL: Grid = [".ggggg.", "gGGGGGg", "g*G*G*g", "g*****g", "g*****g", "gGGGGGg", ".ggggg."];
 
 const label = (): Pixels => {
   const { w, h } = LABEL;
@@ -187,7 +187,7 @@ const label = (): Pixels => {
   ribbon(c, w, "INSTALL", SKY[0]);
   const big = title("GAME");
   c.blit(big, Math.floor((w - big.w) / 2), 9);
-  c.grid(w - 8, h - 8, SEAL, { g: GOLD[0], G: GOLD[2], L: GOLD[3], "*": INK });
+  c.grid(w - 8, h - 8, SEAL, { g: INK, G: GOLD[1], "*": GOLD[3] });
   c.frame(0, 0, w, h, BONE[2]);
   return c;
 };
