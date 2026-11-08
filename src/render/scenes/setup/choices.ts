@@ -19,6 +19,7 @@ export const BOARDS: Choice[] = [
 export const OPPONENTS: Choice[] = [
   { id: "ai", label: "Computer" },
   { id: "hotseat", label: "Hotseat" },
+  { id: "online", label: "Online" },
 ];
 
 export const COMMANDERS: Choice[] = [
