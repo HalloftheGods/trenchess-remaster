@@ -8,6 +8,8 @@ import { Hud } from "./ui/Hud";
 import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
 import { getRotation, setRotation } from "./render/iso";
 import { sfx } from "./audio/sfx";
+import { music } from "./audio/music";
+import { Backdrop } from "./render/backdrop/Backdrop";
 import { terrainStrip } from "./render/art/terrainStrip";
 import type { Difficulty } from "./engine/ai";
 
@@ -78,6 +80,7 @@ const startMatch = (options: MatchOptions): void => {
   hud.show(true);
   hud.clearLog();
   match.start(options);
+  music.setMood("battle");
   if (match.phase === "deploy") hud.banner("Deployment", match.terrainLocked ? "The Trench is laid. Position your army." : "Shape the battlefield and position your army");
 };
 
@@ -114,6 +117,7 @@ const bindMenu = (): void => {
 
 const toMenu = (): void => {
   match.quit();
+  music.setMood("title");
   hud.show(false);
   showScreen("title");
   openPanel(null);
@@ -155,6 +159,8 @@ const bindUi = (): void => {
     sound: () => {
       sfx.muted = !sfx.muted;
       $("[data-act=sound]").textContent = sfx.muted ? "🔇" : "🔊";
+      if (sfx.muted) music.stop();
+      else music.start();
     },
   };
   document.addEventListener("click", (e) => {
@@ -171,6 +177,15 @@ const bindUi = (): void => {
     if (e.code === "KeyE") rotateView(1);
     if (e.code === "KeyT") setTheme(STYLE_ORDER[(STYLE_ORDER.indexOf(theme.style) + 1) % STYLE_ORDER.length], theme.palette);
   }, { signal: lifetime.signal });
+};
+
+const bindMusic = (): void => {
+  const wake = () => {
+    if (!sfx.muted) music.start();
+  };
+  document.addEventListener("pointerdown", wake, { signal: lifetime.signal });
+  document.addEventListener("keydown", wake, { signal: lifetime.signal });
+  new Backdrop($("#backdrop"), () => music.levels(), lifetime.signal);
 };
 
 const boot = (s: BattleScene): void => {
@@ -195,6 +210,7 @@ const boot = (s: BattleScene): void => {
   });
   bindUi();
   bindMenu();
+  bindMusic();
   setTheme(theme.style, theme.palette);
   showScreen("title");
 };

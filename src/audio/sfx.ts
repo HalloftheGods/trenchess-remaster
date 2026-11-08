@@ -14,6 +14,12 @@ class Sfx {
   private master: GainNode | null = null;
   muted = false;
 
+  /** The shared context and master bus, so the music can join the same output chain. */
+  bus(): { ctx: AudioContext; master: GainNode } | null {
+    const ctx = this.audio();
+    return ctx && this.master ? { ctx, master: this.master } : null;
+  }
+
   private audio(): AudioContext | null {
     if (this.muted) return null;
     if (!this.ctx) {
