@@ -1,38 +1,21 @@
 import Phaser from "phaser";
 import type { Cell, Order, Pos, Unit } from "../../engine/types";
-import { LAYER, TOP_LAYER, depthOf } from "../iso";
-import { UNIT_FOOT, UNIT_H, unitKey, FACTIONS } from "../art/unitArt";
+import { LAYER, TOP_LAYER, depthOf, standOffset } from "../iso";
+import { UNIT_FOOT, UNIT_H, unitKey } from "../art/unitArt";
 import type { BoardView } from "./BoardView";
 import type { Fx } from "./Fx";
 import { sfx } from "../../audio/sfx";
-
-interface Token {
-  unit: Unit;
-  root: Phaser.GameObjects.Container;
-  body: Phaser.GameObjects.Image;
-  shadow: Phaser.GameObjects.Image;
-  bob: Phaser.Tweens.Tween;
-}
-
-interface Leg {
-  to: Pos;
-  duration: number;
-  arc: number;
-  capture: boolean;
-}
-
-interface Proxy {
-  r: number;
-  c: number;
-  lift: number;
-}
-
-const tint = (owner: 0 | 1): number => Phaser.Display.Color.HexStringToColor(FACTIONS[owner].css).color;
+import { UnitDrama } from "./UnitDrama";
+import { factionTint, legsOf, type Proxy, type Token } from "./unitToken";
 
 export class UnitView {
   private tokens = new Map<number, Token>();
+  private drama: UnitDrama;
+  private ghostImg: Phaser.GameObjects.Image | null = null;
 
-  constructor(private scene: Phaser.Scene, private board: BoardView, private fx: Fx) {}
+  constructor(private scene: Phaser.Scene, private board: BoardView, private fx: Fx) {
+    this.drama = new UnitDrama(scene, board, fx, this.tokens, (id, t) => this.remove(id, t));
+  }
 
   private create(unit: Unit, r: number, c: number): Token {
     const shadow = this.scene.add.image(0, 0, "shadow").setScale(0.75);
@@ -47,11 +30,13 @@ export class UnitView {
       ease: "Sine.InOut",
       delay: Math.random() * 800,
     });
-    const token = { unit, root, body, shadow, bob };
+    body.preFX?.setPadding(18);
+    const token: Token = { unit, root, body, shadow, bob, glow: null, r, c };
     this.place(token, { r, c, lift: 0 });
     return token;
   }
 
+  /** Stand the token on a (possibly fractional) cell: foot on the surface, plus the top-view stand offset. */
   private place(t: Token, p: Proxy): void {
     const r0 = Math.floor(p.r);
     const c0 = Math.floor(p.c);
@@ -59,9 +44,11 @@ export class UnitView {
     const b = this.board.center(Math.ceil(p.r), Math.ceil(p.c));
     const fr = p.r - r0 + (p.c - c0);
     const k = Math.min(1, fr / 2 || 0);
-    const ground = a.y + (b.y - a.y) * k;
+    const ground = a.y + (b.y - a.y) * k + standOffset();
     const x = a.x + (b.x - a.x) * k;
     t.root.setPosition(x, ground);
+    t.r = p.r;
+    t.c = p.c;
     t.body.setY(-p.lift);
     t.shadow.setScale(0.75 - Math.min(0.35, p.lift / 200)).setAlpha(1 - Math.min(0.5, p.lift / 160));
     const depth = p.lift > 4 ? TOP_LAYER - 10 : depthOf(Math.round(p.r), Math.round(p.c), LAYER.unit);
@@ -108,7 +95,20 @@ export class UnitView {
     for (const [id, t] of this.tokens) {
       const on = id === unitId;
       t.body.setScale(on ? 0.9 : 0.82);
+      this.setGlow(t, on);
     }
+  }
+
+  /** Selection glow (WebGL only: preFX is null on the canvas renderer). */
+  private setGlow(t: Token, on: boolean): void {
+    if (on === (t.glow !== null)) return;
+    if (!on) {
+      t.body.preFX?.remove(t.glow!);
+      t.glow = null;
+      return;
+    }
+    t.glow = t.body.preFX?.addGlow(factionTint(t.unit.owner), 4, 0, false, 0.15, 18) ?? null;
+    if (t.glow) this.scene.tweens.add({ targets: t.glow, outerStrength: 7, duration: 700, yoyo: true, repeat: -1, ease: "Sine.InOut" });
   }
 
   private tweenProxy(t: Token, from: Proxy, to: Proxy, duration: number, arc: number, ease = "Sine.InOut"): Promise<void> {
@@ -133,27 +133,13 @@ export class UnitView {
     });
   }
 
-  private async impact(victims: Unit[], at: Pos): Promise<void> {
-    for (const v of victims) {
-      const t = this.tokens.get(v.id);
-      if (!t) continue;
-      const { x, y } = this.board.center(at[0], at[1]);
-      this.fx.shatter(t.root.x, t.root.y - 30, tint(v.owner));
-      this.fx.shockwave(x, y, 0xffe9a8);
-      this.fx.floatText(x, y - 70, v.type === "king" ? "KING SLAIN!" : "CAPTURED", "#ffe08a");
-      this.fx.shake(v.type === "king" ? 0.014 : 0.005, v.type === "king" ? 500 : 200);
-      sfx.capture(v.type === "king");
-      this.remove(v.id, t);
-    }
-  }
-
   async animateOrder(order: Order, before: Cell[][]): Promise<void> {
     const t = this.tokens.get(order.unitId);
     if (!t) return;
     t.bob.pause();
     t.body.setY(0);
     let cur: Proxy = { r: order.from[0], c: order.from[1], lift: 0 };
-    for (const step of this.legs(order)) {
+    for (const step of legsOf(order)) {
       const next: Proxy = { r: step.to[0], c: step.to[1], lift: 0 };
       sfx.move(step.arc > 0);
       if (step.capture) await this.wait(60);
@@ -162,7 +148,7 @@ export class UnitView {
       this.fx.dust(x, y, step.arc > 30 ? 12 : 5);
       if (step.arc > 30) this.fx.shockwave(x, y, 0xffffff, 0.6);
       const victim = step.capture ? before[step.to[0]][step.to[1]] : null;
-      if (victim) await this.impact([victim], step.to);
+      if (victim) await this.drama.impact([victim], step.to);
       cur = next;
     }
     t.bob.resume();
@@ -172,44 +158,17 @@ export class UnitView {
     return new Promise((res) => this.scene.time.delayedCall(ms, res));
   }
 
-  private legs(order: Order): Leg[] {
-    const isCapture = (p: Pos) => order.captures.some((c) => c[0] === p[0] && c[1] === p[1]);
-    if (order.style === "slide") return order.path.map((to) => ({ to, duration: 150, arc: 6, capture: isCapture(to) }));
-    if (order.style === "joust") return [{ to: order.path[0], duration: 220, arc: 40, capture: isCapture(order.path[0]) }, { to: order.to, duration: 220, arc: 30, capture: isCapture(order.to) }];
-    const arcs: Record<string, number> = { step: 10, jump: 70, flip: 80 };
-    return [{ to: order.to, duration: order.style === "step" ? 260 : 560, arc: arcs[order.style], capture: isCapture(order.to) }];
+  perish(unit: Unit, at: Pos): Promise<void> {
+    return this.drama.perish(unit, at);
   }
 
-  async perish(unit: Unit, at: Pos): Promise<void> {
-    const t = this.tokens.get(unit.id);
-    if (!t) return;
-    const { x, y } = this.board.center(at[0], at[1]);
-    this.fx.sandSink(x, y);
-    this.fx.floatText(x, y - 60, "LOST TO THE SANDS", "#ffcf7a");
-    sfx.perish();
-    t.bob.remove();
-    await new Promise<void>((res) =>
-      this.scene.tweens.add({ targets: t.body, y: 40, alpha: 0, duration: 900, ease: "Quad.In", onComplete: () => res() }),
-    );
-    this.remove(unit.id, t);
+  promote(at: Pos, after: Cell[][]): Promise<void> {
+    return this.drama.promote(at, after);
   }
 
-  async promote(at: Pos, after: Cell[][]): Promise<void> {
-    const u = after[at[0]][at[1]];
-    const t = u && this.tokens.get(u.id);
-    if (!t || !u) return;
-    const { x, y } = this.board.center(at[0], at[1]);
-    this.fx.beam(x, y, 0xfff2a8);
-    this.fx.sparkle(x, y - 20);
-    this.fx.floatText(x, y - 80, "PROMOTED!", "#fff2a8");
-    sfx.promote();
-    await this.wait(300);
-    t.body.setTexture(unitKey(u.type, u.owner));
-    t.unit = u;
-    await this.wait(400);
+  celebrate(owner: 0 | 1): void {
+    this.drama.celebrate(owner);
   }
-
-  private ghostImg: Phaser.GameObjects.Image | null = null;
 
   ghost(unit: Unit | null, at: Pos | null): void {
     this.ghostImg?.destroy();
@@ -217,7 +176,7 @@ export class UnitView {
     if (!unit || !at) return;
     const { x, y } = this.board.center(at[0], at[1]);
     this.ghostImg = this.scene.add
-      .image(x, y, unitKey(unit.type, unit.owner))
+      .image(x, y + standOffset(), unitKey(unit.type, unit.owner))
       .setOrigin(0.5, UNIT_FOOT / UNIT_H)
       .setScale(0.82)
       .setAlpha(0.45)
@@ -230,12 +189,22 @@ export class UnitView {
     board.forEach((row, r) =>
       row.forEach((u, c) => {
         const t = u && this.tokens.get(u.id);
-        if (!t) return;
-        const { x, y } = this.board.center(r, c);
-        t.root.setDepth(depthOf(r, c, LAYER.unit));
-        this.scene.tweens.add({ targets: t.root, x, y, duration, ease: "Cubic.InOut" });
+        if (t) this.slide(t, r, c, duration);
       }),
     );
+  }
+
+  /** Relayout every token to the cell it last stood on (for view changes that have no board at hand). */
+  relayoutAll(duration: number): void {
+    for (const t of this.tokens.values()) this.slide(t, Math.round(t.r), Math.round(t.c), duration);
+  }
+
+  private slide(t: Token, r: number, c: number, duration: number): void {
+    const { x, y } = this.board.center(r, c);
+    t.r = r;
+    t.c = c;
+    t.root.setDepth(depthOf(r, c, LAYER.unit));
+    this.scene.tweens.add({ targets: t.root, x, y: y + standOffset(), duration, ease: "Cubic.InOut" });
   }
 
   retexture(): void {
@@ -246,23 +215,6 @@ export class UnitView {
     for (const [id, t] of this.tokens) {
       if (ids.includes(id)) t.body.setTint(0x8a8a8a);
       else t.body.clearTint();
-    }
-  }
-
-  celebrate(owner: 0 | 1): void {
-    const color = tint(owner);
-    let i = 0;
-    for (const t of this.tokens.values()) {
-      if (t.unit.owner !== owner) continue;
-      const delay = i++ * 90;
-      this.scene.tweens.add({ targets: t.body, y: -26, duration: 260, yoyo: true, repeat: 3, delay, ease: "Quad.Out" });
-    }
-    for (let k = 0; k < 9; k++) {
-      this.scene.time.delayedCall(k * 320, () => {
-        const x = Phaser.Math.Between(-420, 420);
-        const y = Phaser.Math.Between(-60, 380);
-        this.fx.firework(x, y, k % 2 ? color : 0xf2c94c);
-      });
     }
   }
 

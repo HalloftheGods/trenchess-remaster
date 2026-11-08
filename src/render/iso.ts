@@ -4,6 +4,10 @@ export const TILE_W = 84;
 export const TILE_H = 42;
 export const SLAB = 16;
 export const HEADROOM = 72;
+/** Side of one square in the classic straight-on ("top") projection. */
+export const TOP_TILE = 64;
+/** In top view a unit's foot sits this far below the square's centre so it reads as standing on it. */
+export const TOP_STAND = 14;
 
 export const ELEVATION: Record<Terrain, number> = {
   flat: 0,
@@ -13,20 +17,43 @@ export const ELEVATION: Record<Terrain, number> = {
   desert: 1,
 };
 
+export type Projection = "iso" | "top";
+
 export interface ScreenPoint {
   x: number;
   y: number;
 }
 
+export interface BoardBounds {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+}
+
 const LAST = 11;
+const MID = LAST / 2;
 
 let rotation = 0;
+let projection: Projection = "iso";
 
 export const getRotation = (): number => rotation;
 
 export const setRotation = (quarterTurns: number): void => {
   rotation = ((quarterTurns % 4) + 4) % 4;
 };
+
+export const getProjection = (): Projection => projection;
+
+export const setProjection = (p: Projection): void => {
+  projection = p;
+};
+
+/** Vertical lift of a terrain's surface in the current projection (top view is flat). */
+export const liftOf = (t: Terrain): number => (projection === "top" ? 0 : ELEVATION[t]);
+
+/** How far below the cell centre a unit's foot stands in the current projection. */
+export const standOffset = (): number => (projection === "top" ? TOP_STAND : 0);
 
 const rotate = (r: number, c: number, turns: number): [number, number] => {
   let vr = r;
@@ -39,18 +66,29 @@ export const toView = (r: number, c: number): [number, number] => rotate(r, c, r
 
 export const toScreen = (r: number, c: number): ScreenPoint => {
   const [vr, vc] = toView(r, c);
+  if (projection === "top") return { x: (vc - MID) * TOP_TILE, y: (vr - MID) * TOP_TILE };
   return { x: (vc - vr) * (TILE_W / 2), y: (vc + vr) * (TILE_H / 2) };
 };
 
+const unrotate = (vr: number, vc: number): [number, number] => rotate(vr, vc, (4 - rotation) % 4);
+
 export const toCell = (x: number, y: number): [number, number] => {
+  if (projection === "top") return unrotate(Math.round(y / TOP_TILE + MID), Math.round(x / TOP_TILE + MID));
   const a = x / (TILE_W / 2);
   const b = y / (TILE_H / 2);
-  return rotate(Math.round((b - a) / 2), Math.round((a + b) / 2), (4 - rotation) % 4);
+  return unrotate(Math.round((b - a) / 2), Math.round((a + b) / 2));
 };
 
 export const depthOf = (r: number, c: number, layer: number): number => {
   const [vr, vc] = toView(r, c);
+  if (projection === "top") return vr * 10 + layer;
   return (vr + vc) * 10 + layer;
+};
+
+/** World-space footprint of the board's surface in the current projection. */
+export const boardBounds = (): BoardBounds => {
+  if (projection === "top") return { centerX: 0, centerY: 0, width: 12 * TOP_TILE, height: 12 * TOP_TILE };
+  return { centerX: 0, centerY: MID * TILE_H, width: 12 * TILE_W, height: 12 * TILE_H };
 };
 
 export const LAYER = {
