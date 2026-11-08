@@ -29,6 +29,19 @@ const TOOLS: { tool: DeployTool; label: string }[] = [
   { tool: "desert", label: "Desert" },
 ];
 
+const LEGEND: [cls: string, label: string][] = [
+  ["move", "Classic move"],
+  ["upgrade", "New move"],
+  ["attack", "Capture only"],
+  ["blocked", "Blocked by terrain"],
+];
+
+const moveLegend = (terrain: Terrain): string => {
+  const items = LEGEND.map(([cls, label]) => `<i><span class="${cls}"></span>${label}</i>`);
+  if (terrain !== "flat") items.push(`<i><span class="t-${terrain}"></span>Standing in ${TERRAIN_LORE[terrain].name}</i>`);
+  return `<div class="cm-legend u-legend">${items.join("")}</div>`;
+};
+
 export class Hud {
   private root = $("#hud");
   private bannerTimer = 0;
@@ -126,6 +139,7 @@ export class Hud {
       const preview = $(".u-preview", card);
       preview.innerHTML = "";
       preview.appendChild(moveBoard(unit.type, "both", terrain === "flat" ? "flat" : terrain, this.icon(unit.type, unit.owner)));
+      preview.insertAdjacentHTML("beforeend", moveLegend(terrain));
       $(".u-moves", card).innerHTML = `<i>"${lore.motto}"</i><br/><b>${lore.ability}:</b> ${lore.moves}`;
     }
     const t = TERRAIN_LORE[terrain];

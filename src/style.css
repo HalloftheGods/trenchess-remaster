@@ -418,6 +418,31 @@ kbd {
   font-size: 13px;
 }
 
+.u-legend {
+  margin-top: 6px;
+  font-size: 11px;
+  gap: 4px 10px;
+}
+
+.u-legend i {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.u-legend i span {
+  width: 10px;
+  height: 10px;
+  margin: 0;
+}
+
+.u-legend .t-forest { background: #1c5e33; }
+.u-legend .t-swamp { background: #1f4f8c; }
+.u-legend .t-mountain { background: #7a2a2d; }
+.u-legend .t-desert { background: #8c6a16; }
+
 .u-preview .mp-cell img {
   width: 130%;
   height: 210%;
