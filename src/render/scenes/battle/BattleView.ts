@@ -24,6 +24,9 @@ const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 2.2;
 /** The setup panel plus its margins; the board centres in what is left of the screen. */
 const SETUP_PANEL = 470;
+/** Vertical padding and camera lift per projection when framing the board. */
+const PAD_H: Record<Projection, number> = { iso: 300, front: 220, top: 160 };
+const LIFT: Record<Projection, number> = { iso: 50, front: 30, top: 0 };
 
 interface Framed {
   x: number;
@@ -102,11 +105,11 @@ export class BattleView implements ViewApi {
     const p = getProjection();
     const top = p !== "iso";
     const padW = top ? 140 : 120;
-    const padH = p === "top" ? 160 : p === "front" ? 220 : 300;
+    const padH = PAD_H[p];
     const setup = where === "setup";
     const zoom = Phaser.Math.Clamp(Math.min(usable / (b.width + padW), h / (b.height + padH + (setup ? 80 : 0))), ZOOM_MIN, setup ? 1.2 : 1.6);
     const shift = (w / 2 - usable / 2 - (setup ? 110 : 0)) / zoom;
-    const lift = (p === "top" ? 0 : p === "front" ? 30 : 50) + (setup ? 90 / zoom : 0);
+    const lift = LIFT[p] + (setup ? 90 / zoom : 0);
     return { x: b.centerX + shift, y: b.centerY - lift, zoom };
   }
 

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { boardBounds, getProjection, isSquare, ySquash } from "../iso";
+import { boardBounds, getProjection, isSquare, ySquash, type Projection } from "../iso";
 import { PEAKS_H, skyKey } from "../art/skyArt";
 import { PLINTH_MARGIN, plinthIso, plinthKey, plinthTop, type PlinthSpec } from "../art/plinthArt";
 import { recipe } from "../art/worlds/registry";
@@ -12,6 +12,9 @@ interface Look {
   peaks: boolean;
   haze: number;
 }
+
+/** How far above the plinth's back edge the horizon sits, per projection. */
+const HORIZON_GAP: Record<Projection, number> = { iso: 30, front: 60, top: 140 };
 
 const LOOKS: Record<BackdropMode, Look> = {
   dusk: { dome: true, stars: true, peaks: false, haze: 0.08 },
@@ -95,10 +98,9 @@ export class Backdrop {
     this.fit(this.plinthTop, plinthTop(BOARD_SIZE));
     const b = boardBounds();
     const top = isSquare();
-    const front = getProjection() === "front";
     this.plinthTop.setScale(1, ySquash());
     const backEdge = b.centerY - b.height / 2 - PLINTH_MARGIN * ySquash();
-    const horizon = backEdge - (front ? 60 : top ? 140 : 30);
+    const horizon = backEdge - HORIZON_GAP[getProjection()];
     const targets: [Phaser.GameObjects.Components.Transform, number, number][] = [
       [this.dome, b.centerX, horizon],
       [this.ground, b.centerX, horizon],
