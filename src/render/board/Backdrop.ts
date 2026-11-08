@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { boardBounds, getProjection } from "../iso";
+import { boardBounds, getProjection, isSquare, ySquash } from "../iso";
 import { PEAKS_H, skyKey } from "../art/skyArt";
 import { PLINTH_MARGIN, plinthIso, plinthKey, plinthTop, type PlinthSpec } from "../art/plinthArt";
 import { recipe } from "../art/worlds/registry";
@@ -47,7 +47,7 @@ export class Backdrop {
   setMode(mode: BackdropMode, duration = 400): void {
     backdrop.mode = mode;
     const look = LOOKS[mode];
-    const top = getProjection() === "top";
+    const top = isSquare();
     const show = (obj: Phaser.GameObjects.Components.AlphaSingle & Phaser.GameObjects.Components.Visible, alpha: number) => {
       if (duration > 0) this.scene.tweens.add({ targets: obj, alpha, duration, ease: "Sine.InOut", onComplete: () => obj.setVisible(alpha > 0) });
       else obj.setAlpha(alpha).setVisible(alpha > 0);
@@ -94,9 +94,11 @@ export class Backdrop {
     this.fit(this.plinthIso, plinthIso(BOARD_SIZE));
     this.fit(this.plinthTop, plinthTop(BOARD_SIZE));
     const b = boardBounds();
-    const top = getProjection() === "top";
-    const backEdge = b.centerY - b.height / 2 - PLINTH_MARGIN;
-    const horizon = backEdge - (top ? 140 : 30);
+    const top = isSquare();
+    const front = getProjection() === "front";
+    this.plinthTop.setScale(1, ySquash());
+    const backEdge = b.centerY - b.height / 2 - PLINTH_MARGIN * ySquash();
+    const horizon = backEdge - (front ? 60 : top ? 140 : 30);
     const targets: [Phaser.GameObjects.Components.Transform, number, number][] = [
       [this.dome, b.centerX, horizon],
       [this.ground, b.centerX, horizon],

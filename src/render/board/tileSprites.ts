@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { Terrain } from "../../engine/types";
-import { LAYER, depthOf, getProjection, liftOf, toScreen, type Projection } from "../iso";
+import { LAYER, depthOf, getProjection, liftOf, toScreen, ySquash, type Projection } from "../iso";
 import { TILE_ORIGIN_Y, VARIANTS, tileKey, tileTopKey } from "../art/terrainArt";
 import { decorKey } from "../art/decorArt";
 
@@ -26,7 +26,7 @@ export const variantOf = (r: number, c: number): number => (r * 7 + c * 13) % VA
 
 export const isLight = (r: number, c: number): boolean => (r + c) % 2 === 0;
 
-export const fogKey = (p: Projection): string => (p === "top" ? "fog-top" : "fog");
+export const fogKey = (p: Projection): string => (p === "iso" ? "fog" : "fog-top");
 
 export const createTile = (scene: Phaser.Scene, r: number, c: number): TileSprites => {
   const { x, y } = toScreen(r, c);
@@ -44,15 +44,24 @@ export const createTile = (scene: Phaser.Scene, r: number, c: number): TileSprit
 export const dress = (s: TileSprites, r: number, c: number, p: Projection): void => {
   const v = variantOf(r, c);
   const t = s.terrain;
-  if (p === "top") {
-    s.tile.setTexture(tileTopKey(t, isLight(r, c), v)).setOrigin(0.5, 0.5);
-    s.glint.setScale(0.8, 0.8);
+  const squash = ySquash();
+  if (p !== "iso") {
+    s.tile.setTexture(tileTopKey(t, isLight(r, c), v)).setOrigin(0.5, 0.5).setScale(1, squash);
+    s.glint.setScale(0.8, 0.8 * squash);
   } else {
-    s.tile.setTexture(tileKey(t, isLight(r, c), v)).setOrigin(0.5, TILE_ORIGIN_Y);
+    s.tile.setTexture(tileKey(t, isLight(r, c), v)).setOrigin(0.5, TILE_ORIGIN_Y).setScale(1, 1);
     s.glint.setScale(1, 0.35);
   }
-  s.fog.setTexture(fogKey(p));
-  const decorated = t !== "flat" && p === "iso";
+  s.fog.setTexture(fogKey(p)).setScale(1, p === "iso" ? 1 : squash);
+  // the front view keeps the standing decor so the table reads in depth; the top view lets the tile carry it
+  const decorated = t !== "flat" && p !== "top";
+  if (p === "front") {
+    s.back.setOrigin(0.5, 1).setScale(0.8);
+    s.front.setOrigin(0.5, 1).setScale(0.8);
+  } else {
+    s.back.setOrigin(0.5, TILE_ORIGIN_Y).setScale(1);
+    s.front.setOrigin(0.5, TILE_ORIGIN_Y).setScale(1);
+  }
   s.back.setVisible(decorated);
   s.front.setVisible(decorated);
   if (decorated) {
@@ -68,11 +77,12 @@ export const movesFor = (s: TileSprites, r: number, c: number, out: TileMove[]):
   out[0].obj = s.tile;
   out[0].y = y;
   out[0].layer = LAYER.tile;
+  const foot = getProjection() === "front" ? (TOP_TILE_HALF * ySquash()) / 2 : 0;
   out[1].obj = s.back;
-  out[1].y = y - lift;
+  out[1].y = y - lift + foot;
   out[1].layer = LAYER.backDecor;
   out[2].obj = s.front;
-  out[2].y = y - lift;
+  out[2].y = y - lift + foot;
   out[2].layer = LAYER.frontDecor;
   out[3].obj = s.fog;
   out[3].y = y - lift;
@@ -84,3 +94,5 @@ export const movesFor = (s: TileSprites, r: number, c: number, out: TileMove[]):
 };
 
 export const MOVE_SLOTS = 5;
+
+const TOP_TILE_HALF = 32;

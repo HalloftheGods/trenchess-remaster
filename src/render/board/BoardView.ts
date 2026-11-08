@@ -1,12 +1,15 @@
 import Phaser from "phaser";
 import type { Pos, Terrain } from "../../engine/types";
 import { BOARD_SIZE } from "../../engine/rules";
-import { LAYER, depthOf, getProjection, liftOf, toScreen, type Projection } from "../iso";
+import { LAYER, depthOf, getProjection, liftOf, toScreen, ySquash, type Projection } from "../iso";
 import { MOVE_SLOTS, createTile, dress, movesFor, type TileMove, type TileSprites } from "./tileSprites";
 
 export type MarkerKind = "move" | "dot" | "attack" | "select" | "hover" | "last" | "deploy" | "danger";
 
-const markerKey = (kind: MarkerKind): string => (getProjection() === "top" ? `mk-${kind}-top` : `mk-${kind}`);
+const markerKey = (kind: MarkerKind): string => (getProjection() === "iso" ? `mk-${kind}` : `mk-${kind}-top`);
+
+/** Markers share the square art between top and front, squashed to the front view's grid. */
+const markerSquash = (): number => (getProjection() === "iso" ? 1 : ySquash());
 
 export class BoardView {
   private tiles: TileSprites[][] = [];
@@ -141,10 +144,10 @@ export class BoardView {
   showMarkers(cells: Pos[], kind: MarkerKind): void {
     for (const [r, c] of cells) {
       const { x, y } = this.center(r, c);
-      const m = this.scene.add.image(x, y, markerKey(kind)).setDepth(depthOf(r, c, LAYER.marker)).setAlpha(0);
+      const m = this.scene.add.image(x, y, markerKey(kind)).setDepth(depthOf(r, c, LAYER.marker)).setAlpha(0).setScale(1, markerSquash());
       this.scene.tweens.add({ targets: m, alpha: 1, duration: 140 });
       if (kind === "move" || kind === "attack" || kind === "danger") {
-        this.scene.tweens.add({ targets: m, scale: 0.9, duration: 650, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+        this.scene.tweens.add({ targets: m, scaleX: 0.9, scaleY: 0.9 * markerSquash(), duration: 650, yoyo: true, repeat: -1, ease: "Sine.InOut" });
       }
       this.markers.push(m);
     }
@@ -154,7 +157,7 @@ export class BoardView {
     this.clearPreview();
     for (const [r, c] of cells) {
       const { x, y } = this.center(r, c);
-      this.preview.push(this.scene.add.image(x, y, markerKey(kind)).setDepth(depthOf(r, c, LAYER.marker)).setAlpha(alpha));
+      this.preview.push(this.scene.add.image(x, y, markerKey(kind)).setDepth(depthOf(r, c, LAYER.marker)).setAlpha(alpha).setScale(1, markerSquash()));
     }
   }
 
@@ -174,7 +177,7 @@ export class BoardView {
       return;
     }
     const { x, y } = this.center(cell[0], cell[1]);
-    this.hover.setPosition(x, y).setDepth(depthOf(cell[0], cell[1], LAYER.marker) + 0.5).setVisible(true);
+    this.hover.setPosition(x, y).setScale(1, markerSquash()).setDepth(depthOf(cell[0], cell[1], LAYER.marker) + 0.5).setVisible(true);
   }
 
   setFog(visible: boolean[][] | null): void {

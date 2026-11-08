@@ -57,6 +57,7 @@ export class Compass extends Phaser.GameObjects.Container {
       160,
       [
         { id: "iso", label: "Iso" },
+        { id: "front", label: "Front" },
         { id: "top", label: "Top" },
       ],
       getProjection(),

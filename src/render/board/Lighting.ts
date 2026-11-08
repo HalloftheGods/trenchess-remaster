@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { BOARD_SIZE } from "../../engine/rules";
-import { LAYER, TILE_H, TILE_W, TOP_LAYER, TOP_TILE, boardBounds, depthOf, getProjection } from "../iso";
+import { LAYER, TILE_H, TILE_W, TOP_LAYER, TOP_TILE, boardBounds, depthOf, isSquare, ySquash } from "../iso";
 import type { BoardView } from "./BoardView";
 
 /**
@@ -20,7 +20,7 @@ export class Lighting {
 
   private placeLights(): void {
     const b = boardBounds();
-    const top = getProjection() === "top";
+    const top = isSquare();
     this.warm.setPosition(b.centerX - b.width * 0.42, b.centerY - b.height * 0.42).setScale(top ? 3.4 : 4.6, top ? 3.4 : 2.8);
     this.cool.setPosition(b.centerX + b.width * 0.4, b.centerY + b.height * 0.4).setScale(top ? 3.6 : 5.2, top ? 3.6 : 3.2);
   }
@@ -30,9 +30,9 @@ export class Lighting {
     this.blobs.forEach((b) => b.destroy());
     this.blobs = [];
     this.placeLights();
-    const top = getProjection() === "top";
+    const top = isSquare();
     const sx = top ? TOP_TILE / 256 : TILE_W / 256;
-    const sy = top ? TOP_TILE / 128 : TILE_H / 128;
+    const sy = top ? (TOP_TILE * ySquash()) / 128 : TILE_H / 128;
     const b = boardBounds();
     for (let r = 0; r < BOARD_SIZE; r++) {
       for (let c = 0; c < BOARD_SIZE; c++) {

@@ -1,8 +1,12 @@
 import type Phaser from "phaser";
 import type { BattleScene } from "../render/scenes/BattleScene";
 import type { ViewAction } from "../render/ui/Compass";
+import type { Projection } from "../render/iso";
 
 const PAN = 48;
+
+/** V cycles the views: diorama, front table, straight-on. */
+const NEXT_PROJECTION: Record<Projection, Projection> = { iso: "front", front: "top", top: "iso" };
 
 /**
  * Maps `ui:view` events (from the compass) and the view keys to the battle scene's View API, and
@@ -34,7 +38,7 @@ export const bindViewControls = (game: Phaser.Game, scene: () => BattleScene, af
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const key = keys[e.code];
       if (key) run(key);
-      if (e.code === "KeyV") run({ action: "projection", value: scene().view.projection === "iso" ? "top" : "iso" });
+      if (e.code === "KeyV") run({ action: "projection", value: NEXT_PROJECTION[scene().view.projection] });
       const pan = pans[e.code];
       if (pan) scene().view.panBy(pan[0], pan[1]);
     },

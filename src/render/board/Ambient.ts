@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { Terrain } from "../../engine/types";
-import { TOP_LAYER, getProjection } from "../iso";
+import { TOP_LAYER, isSquare } from "../iso";
 import type { BoardView } from "./BoardView";
 
 /** Random emit zone over a fixed set of world points, with per-point jitter; allocation-free at emit time. */
@@ -73,7 +73,7 @@ export class Ambient {
   rebuild(board: BoardView): void {
     this.emitters.forEach((e) => e.destroy());
     this.emitters = [];
-    const top = getProjection() === "top";
+    const top = isSquare();
     for (const spec of SPECS) {
       const cells = board.cellsOf(spec.terrain);
       if (!cells.length) continue;
