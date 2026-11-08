@@ -26,8 +26,8 @@ const SANCTUARY: Partial<Record<Terrain, UnitType[]>> = {
 };
 
 const reach = (type: UnitType, terrain: Terrain, foes: boolean): Set<string> => {
-  const board = emptyGrid<Cell>(null);
-  const field = emptyGrid<Terrain>(terrain);
+  const board = emptyGrid<Cell>(null, SIZE);
+  const field = emptyGrid<Terrain>(terrain, SIZE);
   field[MID][MID] = "flat";
   if (foes) board.forEach((row, r) => row.forEach((_, c) => (board[r][c] = { id: 900 + r * 12 + c, type: "pawn", owner: 1 })));
   board[MID][MID] = { id: 1, type, owner: 0 };

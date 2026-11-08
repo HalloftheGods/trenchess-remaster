@@ -2,7 +2,7 @@ import type { Cell, GameState, Order, PlayerId, Pos, Terrain, TurnEvent } from "
 import { applyOrder, cloneState, createGame, endTurn, legalOrders, unitsInDanger } from "../engine/game";
 import { isInCheck, findKing, pseudoMovesFor } from "../engine/moves";
 import { canDeployTo, canPlaceTerrain, createArmies, randomBattlefield, randomTerrainFor, seededRng, swapUnits, terrainCount } from "../engine/setup";
-import { TERRAIN_QUOTA, deployRows, homeRows, inRows, opponent } from "../engine/rules";
+import { BOARD_SIZE, TERRAIN_QUOTA, deployRows, homeRows, inRows, opponent, setBoard, type BoardKind } from "../engine/rules";
 import { emptyGrid } from "../engine/game";
 import { canSee, visibleCells } from "../engine/vision";
 import type { Difficulty } from "../engine/ai";
@@ -22,6 +22,8 @@ export interface MatchOptions {
   ordersPerTurn: number;
   mode: GameMode;
   fog: boolean;
+  /** Classic 8x8 chessboard or Extended 12x12 battlefield. */
+  board: BoardKind;
   /** Chi battlefield (`Preset.id`); a random preset is drawn when missing. */
   preset?: string;
 }
@@ -76,6 +78,7 @@ export class Match {
 
   start(options: MatchOptions): void {
     this.options = options;
+    setBoard(options.board);
     this.show(buildField(options, freshSeed()));
     this.state = null;
     this.phase = "deploy";
@@ -241,7 +244,7 @@ export class Match {
     this.boardView.clearMarkers();
     const zone: Pos[] = [];
     const rows = this.tool === "units" ? deployRows(this.deployer) : homeRows(this.deployer);
-    for (let r = 0; r < 12; r++) for (let c = 0; c < 12; c++) if (inRows(r, rows)) zone.push([r, c]);
+    for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) if (inRows(r, rows)) zone.push([r, c]);
     this.boardView.showMarkers(zone, "deploy");
     if (this.selected) {
       this.boardView.showMarkers([this.selected], "select");

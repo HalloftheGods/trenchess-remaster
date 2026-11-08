@@ -2,8 +2,8 @@ import type { Cell, GameConfig, GameState, Order, PlayerId, Pos, Terrain, TurnEv
 import { BOARD_SIZE, opponent } from "./rules";
 import { findKing, forEachUnit, isInCheck, pseudoMovesFor } from "./moves";
 
-export const emptyGrid = <T>(fill: T): T[][] =>
-  Array.from({ length: BOARD_SIZE }, () => Array.from({ length: BOARD_SIZE }, () => fill));
+export const emptyGrid = <T>(fill: T, size = BOARD_SIZE): T[][] =>
+  Array.from({ length: size }, () => Array.from({ length: size }, () => fill));
 
 export const cloneState = (s: GameState): GameState => ({
   ...s,

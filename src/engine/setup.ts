@@ -15,11 +15,14 @@ export const seededRng = (seed: number): Rng => {
 };
 
 export const classicFormation = (player: PlayerId): { pos: Pos; type: UnitType }[] => {
-  const back = player === 0 ? 9 : 2;
-  const front = player === 0 ? 8 : 3;
+  // Up to two empty rows behind the back rank (none on 8x8, two on 12x12), army centred left to right.
+  const gap = Math.min(2, Math.floor((BOARD_SIZE - 8) / 2));
+  const col0 = Math.floor((BOARD_SIZE - 8) / 2);
+  const back = player === 0 ? BOARD_SIZE - 1 - gap : gap;
+  const front = player === 0 ? back - 1 : back + 1;
   return ARMY.flatMap((type, i) => [
-    { pos: [back, i + 2] as Pos, type },
-    { pos: [front, i + 2] as Pos, type: "pawn" as UnitType },
+    { pos: [back, col0 + i] as Pos, type },
+    { pos: [front, col0 + i] as Pos, type: "pawn" as UnitType },
   ]);
 };
 

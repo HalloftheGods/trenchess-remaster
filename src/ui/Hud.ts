@@ -1,14 +1,14 @@
 import type { Cell, GameState, Outcome, PlayerId, Terrain, TurnEvent, Unit, UnitType } from "../engine/types";
 import type { Match, MatchOptions, DeployTool } from "../game/Match";
 import { TERRAIN_LORE, UNIT_LORE } from "../game/lore";
-import { TERRAIN_QUOTA, deployRows, homeRows } from "../engine/rules";
+import { BOARD_SIZE, TERRAIN_QUOTA, deployRows, homeRows } from "../engine/rules";
 import { FACTIONS } from "../render/art/unitArt";
 import { moveBoard } from "./movePreview";
 
 const $ = <T extends HTMLElement>(sel: string, root: ParentNode = document): T => root.querySelector(sel) as T;
 
 const FILES = "abcdefghijkl";
-const coord = ([r, c]: readonly [number, number]): string => `${FILES[c]}${12 - r}`;
+const coord = ([r, c]: readonly [number, number]): string => `${FILES[c]}${BOARD_SIZE - r}`;
 
 export type IconFor = (type: UnitType, owner: PlayerId) => string;
 export type TerrainIconFor = (t: Terrain) => string;
@@ -89,7 +89,7 @@ export class Hud {
     const p = match.deployer;
     $(".deploy-title", this.root).textContent = `${FACTIONS[p].name} deployment`;
     const [lo, hi] = match.tool === "units" ? deployRows(p) : homeRows(p);
-    const rows = `rows ${12 - hi} to ${12 - lo}`;
+    const rows = `rows ${BOARD_SIZE - hi} to ${BOARD_SIZE - lo}`;
     const hint =
       match.tool === "units"
         ? `Click a unit, then a tile in your deployment zone (${rows}) to move or swap it.`

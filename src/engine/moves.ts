@@ -35,7 +35,7 @@ const slide = (ctx: Ctx, dirs: Dir[]): void => {
     const path: Pos[] = [];
     let r = r0 + dr;
     let c = c0 + dc;
-    while (inBounds(r, c) && canEnter(ctx.unit.type, ctx.terrain[r][c])) {
+    while (inBounds(r, c, ctx.board.length) && canEnter(ctx.unit.type, ctx.terrain[r][c])) {
       const cell = ctx.board[r][c];
       if (cell && cell.owner === ctx.unit.owner) break;
       path.push([r, c]);
@@ -53,7 +53,7 @@ const leap = (ctx: Ctx, dirs: Dir[], style: MoveStyle): void => {
   for (const [dr, dc] of dirs) {
     const r = r0 + dr;
     const c = c0 + dc;
-    if (!inBounds(r, c) || !canEnter(ctx.unit.type, ctx.terrain[r][c])) continue;
+    if (!inBounds(r, c, ctx.board.length) || !canEnter(ctx.unit.type, ctx.terrain[r][c])) continue;
     const cell = ctx.board[r][c];
     if (cell && cell.owner === ctx.unit.owner) continue;
     const captures: Pos[] = cell ? [[r, c]] : [];
@@ -73,7 +73,7 @@ const joust = (ctx: Ctx): void => {
   for (const [dr, dc] of ORTHO) {
     const r = r0 + dr * 2;
     const c = c0 + dc * 2;
-    if (!inBounds(r, c) || !canEnter("king", ctx.terrain[r][c])) continue;
+    if (!inBounds(r, c, ctx.board.length) || !canEnter("king", ctx.terrain[r][c])) continue;
     const mid: Pos = [r0 + dr, c0 + dc];
     const midCell = ctx.board[mid[0]][mid[1]];
     const target = ctx.board[r][c];
@@ -91,13 +91,13 @@ const pawnMoves = (ctx: Ctx): void => {
   const f = forwardOf(ctx.unit.owner);
   const owner = ctx.unit.owner;
   const tryMove = (r: number, c: number, style: MoveStyle) => {
-    if (inBounds(r, c) && ctx.board[r][c] === null) ctx.out.push(makeOrder(ctx, [r, c], style, [], [[r, c]]));
+    if (inBounds(r, c, ctx.board.length) && ctx.board[r][c] === null) ctx.out.push(makeOrder(ctx, [r, c], style, [], [[r, c]]));
   };
   const tryCapture = (r: number, c: number, style: MoveStyle) => {
-    if (inBounds(r, c) && isFoe(ctx.board[r][c], owner)) ctx.out.push(makeOrder(ctx, [r, c], style, [[r, c]], [[r, c]]));
+    if (inBounds(r, c, ctx.board.length) && isFoe(ctx.board[r][c], owner)) ctx.out.push(makeOrder(ctx, [r, c], style, [[r, c]], [[r, c]]));
   };
   tryMove(r0 + f, c0, "step");
-  const pathClear = inBounds(r0 + f, c0) && ctx.board[r0 + f][c0] === null;
+  const pathClear = inBounds(r0 + f, c0, ctx.board.length) && ctx.board[r0 + f][c0] === null;
   if (!ctx.unit.moved && pathClear) tryMove(r0 + 2 * f, c0, "jump");
   tryCapture(r0 + f, c0 + 1, "step");
   tryCapture(r0 + f, c0 - 1, "step");
