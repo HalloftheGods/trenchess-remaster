@@ -1,90 +1,91 @@
 import type { Faction } from "../unitArt";
 import { ellipse } from "../canvas";
-import { BONE, FUR, INK, NOSE, X, blob, cloth, eye, furGrad, groundShadow, poly, stroke, type G } from "./beastsArtHelpers";
+import { FUR, HEAD_R, HEAD_Y, INK, X, face, stroke, vinyl, type G } from "./beastsArtHelpers";
+import { figure, head, muzzle, roundEar } from "./beastsArtBody";
 
-const ANTLER_EDGE = "#4a3420";
+const NOSE_DARK = "#3a2820";
 
-const antlerPass = (g: G, x0: number, y0: number, dir: 1 | -1, color: string, w: number): void => {
-  stroke(g, [x0, y0, x0 + dir * 3, y0 - 9, x0 + dir * 5, y0 - 18, x0 + dir * 4, y0 - 27], color, w);
-  stroke(g, [x0 + dir * 3, y0 - 9, x0 + dir * 9, y0 - 14], color, w * 0.8);
-  stroke(g, [x0 + dir * 4.5, y0 - 15, x0 + dir * 11, y0 - 21], color, w * 0.8);
-  stroke(g, [x0 + dir * 4.8, y0 - 21, x0 + dir * 0.5, y0 - 28], color, w * 0.7);
-  stroke(g, [x0 + dir * 4.8, y0 - 21, x0 + dir * 10, y0 - 27], color, w * 0.7);
+/** Stubby toy antler: a dark edge pass under a bone pass, round caps. */
+const antler = (g: G, x: number, dir: 1 | -1): void => {
+  const passes: [string, number][] = [
+    [FUR.bone.dark, 4.6],
+    [FUR.bone.base, 2.8],
+  ];
+  for (const [color, w] of passes) {
+    stroke(g, [x, 21, x + dir * 2.5, 13, x + dir * 4.5, 7.5], color, w);
+    stroke(g, [x + dir * 1.2, 16.5, x + dir * 7, 11.5], color, w * 0.85);
+  }
+  ellipse(g, x + dir * 4.3, 7.8, 1.2, 1.2, FUR.bone.light);
+  ellipse(g, x + dir * 6.8, 11.8, 1, 1, FUR.bone.light);
 };
 
-/** Antlers get a dark edge pass under the bone pass so they still read on pale boards. */
-const antler = (g: G, x0: number, y0: number, dir: 1 | -1): void => {
-  antlerPass(g, x0, y0, dir, ANTLER_EDGE, 4.2);
-  antlerPass(g, x0, y0, dir, BONE, 2.4);
-};
-
-/** Knight: a stag's head and neck in profile, antlers up, an army caparison over the shoulders. */
+/** Knight: a chibi stag with little antlers, long snout and an army saddle blanket. */
 export const stag = (g: G, f: Faction): void => {
   const fur = FUR.stag;
-  groundShadow(g, 19);
-  antler(g, X + 1, 33, -1);
-  antler(g, X + 9, 32, 1);
-  blob(g, X - 2, 78, 17, 11, furGrad(g, fur, X - 18, 66, X + 14, 90));
-  poly(g, [X - 12, 76, X - 7, 44, X + 6, 36, X + 15, 40, X + 13, 74], furGrad(g, fur, X - 10, 40, X + 14, 80));
-  poly(g, [X - 7, 48, X - 9, 44, X - 6, 42, X - 1, 48, X - 2, 62, X - 8, 70], fur.dark, null);
-  const cap = cloth(g, f, X - 18, X + 16);
-  poly(g, [X - 18, 72, X - 14, 60, X + 2, 58, X + 14, 64, X + 16, 80, X + 10, 88, X - 12, 88], cap, f.dark, 1.2);
-  g.strokeStyle = f.trim;
-  g.lineWidth = 1.6;
+  figure(g, f, fur, { rx: 12.5, ry: 16 });
+  g.save();
   g.beginPath();
-  g.moveTo(X - 15, 74);
-  g.lineTo(X - 12, 64);
-  g.lineTo(X + 2, 62);
-  g.lineTo(X + 12, 67);
-  g.lineTo(X + 13, 80);
+  g.ellipse(X, 64, 12.5, 16, 0, 0, Math.PI * 2);
+  g.clip();
+  ellipse(g, X, 56, 14, 4.5, f.base);
+  g.fillStyle = f.base;
+  g.fillRect(X - 14, 56, 28, 8);
+  ellipse(g, X, 64, 14, 4.5, f.dark);
+  g.strokeStyle = f.trim;
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.ellipse(X, 56, 14, 4.5, 0, 0, Math.PI);
   g.stroke();
-  ellipse(g, X - 1, 74, 4, 4, f.trim);
-  ellipse(g, X - 1, 74, 2, 2, f.light);
-  blob(g, X + 5, 36, 11.5, 9.5, furGrad(g, fur, X - 6, 26, X + 16, 46), 0.2);
-  poly(g, [X + 12, 31, X + 26, 38, X + 28, 45, X + 19, 48, X + 11, 44], furGrad(g, fur, X + 10, 30, X + 28, 48));
-  ellipse(g, X + 19, 45.5, 5.5, 2.6, fur.light);
-  ellipse(g, X + 26, 42, 2, 2, NOSE);
-  poly(g, [X - 5, 32, X - 12, 20, X - 1, 26], furGrad(g, fur, X - 12, 20, X - 1, 32));
-  poly(g, [X - 5, 31, X - 10, 23, X - 2, 27], "#e2b7a0", null);
-  eye(g, f, X + 8, 34, 2.5);
-  stroke(g, [X + 4, 45, X + 10, 47.5], INK, 0.8);
+  g.restore();
+  antler(g, X - 7.5, -1);
+  antler(g, X + 7.5, 1);
+  roundEar(g, X - 13.5, 24, 4.2, fur, FUR.pink.base);
+  roundEar(g, X + 13.5, 24, 4.2, fur, FUR.pink.base);
+  head(g, fur);
+  muzzle(g, 40.5, 7.5, 5, fur, NOSE_DARK);
+  face(g, X, HEAD_Y, HEAD_R, -1.5, false);
+  stroke(g, [X - 2.5, 43, X, 44.5, X + 2.5, 43], INK, 0.9);
 };
 
-/** Rook: a standing bear, broad and massive, with an army tabard and trim harness. */
+/** A small tower shield in the army colours with a trim boss, held at the bear's right. */
+const towerShield = (g: G, f: Faction): void => {
+  const x0 = X + 12;
+  const y0 = 48;
+  const w = 13;
+  const h = 30;
+  g.beginPath();
+  g.roundRect(x0, y0, w, h, [5, 5, 7, 7]);
+  const grad = g.createLinearGradient(x0, y0, x0 + w, y0 + h);
+  grad.addColorStop(0, f.light);
+  grad.addColorStop(0.4, f.base);
+  grad.addColorStop(1, f.dark);
+  g.fillStyle = grad;
+  g.fill();
+  g.strokeStyle = f.dark;
+  g.lineWidth = 1.4;
+  g.stroke();
+  g.beginPath();
+  g.roundRect(x0 + 2.2, y0 + 2.2, w - 4.4, h - 4.4, [3.5, 3.5, 5, 5]);
+  g.strokeStyle = f.trim;
+  g.lineWidth = 1.2;
+  g.stroke();
+  vinyl(g, x0 + w / 2, y0 + h / 2, 3.2, 3.2, FUR.gold);
+  g.beginPath();
+  g.ellipse(x0 + 4, y0 + 7, 1.6, 4, -0.4, 0, Math.PI * 2);
+  g.fillStyle = "rgba(255,255,255,0.4)";
+  g.fill();
+};
+
+/** Rook: a stocky chibi bear holding a tiny tower shield. */
 export const bear = (g: G, f: Faction): void => {
   const fur = FUR.bear;
-  groundShadow(g, 21);
-  for (const lx of [X - 10, X + 10]) {
-    poly(g, [lx - 7, 62, lx + 7, 62, lx + 8, 86, lx - 8, 86], furGrad(g, fur, lx - 7, 62, lx + 7, 86));
-    blob(g, lx, 86, 9, 3.5, fur.dark);
-    stroke(g, [lx - 5, 84.5, lx - 5, 88, lx - 1.5, 84, lx - 1.5, 88.5, lx + 2, 84, lx + 2, 88.5, lx + 5.5, 84.5, lx + 5.5, 88], "#120a05", 1.2);
-  }
-  blob(g, X - 18, 54, 6, 15, furGrad(g, fur, X - 24, 40, X - 12, 70), 0.1);
-  blob(g, X + 18, 54, 6, 15, furGrad(g, fur, X + 12, 40, X + 24, 70), -0.1);
-  blob(g, X, 50, 19, 25, furGrad(g, fur, X - 19, 26, X + 19, 76));
-  ellipse(g, X, 56, 11, 15, fur.light);
-  for (const ax of [X - 18, X + 18]) {
-    blob(g, ax, 69, 5.5, 4, fur.dark);
-    stroke(g, [ax - 3.5, 70, ax - 3.5, 73.5, ax, 70, ax, 74, ax + 3.5, 70, ax + 3.5, 73.5], "#120a05", 1.2);
-  }
-  const tab = cloth(g, f, X - 11, X + 11);
-  poly(g, [X - 11, 40, X + 11, 40, X + 9, 74, X - 9, 74], tab, f.dark, 1.2);
-  g.fillStyle = f.trim;
-  g.fillRect(X - 11, 40, 22, 2.4);
-  g.fillRect(X - 9.2, 71.5, 18.4, 2.4);
-  poly(g, [X, 48, X + 6, 56, X, 66, X - 6, 56], f.trim, f.dark, 1);
-  poly(g, [X, 51, X + 3.5, 56, X, 62, X - 3.5, 56], f.light, null);
-  for (const sx of [-1, 1]) {
-    poly(g, [X + sx * 10, 40, X + sx * 19, 44, X + sx * 20, 48, X + sx * 10, 44], f.dark, INK, 1);
-  }
-  blob(g, X - 10, 16, 4.8, 4.8, furGrad(g, fur, X - 14, 12, X - 6, 20));
-  blob(g, X + 10, 16, 4.8, 4.8, furGrad(g, fur, X + 6, 12, X + 14, 20));
-  ellipse(g, X - 10, 16.5, 2.4, 2.4, fur.light);
-  ellipse(g, X + 10, 16.5, 2.4, 2.4, fur.light);
-  blob(g, X, 24, 12.5, 11, furGrad(g, fur, X - 12, 14, X + 12, 36));
-  ellipse(g, X, 29, 6.5, 5, fur.light);
-  blob(g, X, 27, 3.2, 2.4, NOSE, 0, null);
-  stroke(g, [X, 29, X, 32], INK, 1);
-  eye(g, f, X - 5, 22, 1.8);
-  eye(g, f, X + 5, 22, 1.8);
+  figure(g, f, fur, { rx: 14.5, ry: 17, noRightArm: true });
+  towerShield(g, f);
+  vinyl(g, X + 14, 66, 4.6, 4.2, fur, -0.3);
+  roundEar(g, X - 11, 20, 4.8, fur, fur.light);
+  roundEar(g, X + 11, 20, 4.8, fur, fur.light);
+  head(g, fur);
+  muzzle(g, 40, 7, 4.8, fur, NOSE_DARK);
+  face(g, X, HEAD_Y, HEAD_R, -1.5, false);
+  stroke(g, [X - 2.5, 42.5, X, 44, X + 2.5, 42.5], INK, 0.9);
 };

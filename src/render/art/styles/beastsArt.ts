@@ -7,8 +7,10 @@ import { lion, lioness } from "./beastsArtCats";
 type G = CanvasRenderingContext2D;
 
 /**
- * "Beasts": the animal kingdom. Natural fur colors shared by both armies; the army color
- * lives on collars, saddles, tabards, stoles, capes and in the eyes.
+ * "Toy Beasts": the animal kingdom as chibi vinyl figures. Big round heads, stubby bodies,
+ * dot eyes and blush, matte-plastic shading with visible mould seams, each on a round display
+ * base. Pastel natural fur shared by both armies; the army color lives on scarves, saddles,
+ * capes, the shield, the crown jewels and the base rim.
  */
 export const BEASTS: Record<UnitType, (g: G, f: Faction) => void> = {
   pawn: hare,
