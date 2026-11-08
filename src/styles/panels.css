@@ -35,8 +35,6 @@
   overflow: auto;
   min-height: 0;
   padding-right: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(242, 201, 76, 0.45) transparent;
 }
 
 .prophecy {

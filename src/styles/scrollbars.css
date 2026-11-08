@@ -1,0 +1,68 @@
+/*
+ * Scrollbars for every DOM panel that scrolls: a slim dark track and a brass thumb that catches
+ * the light on hover, matching the steel plates and gold rims. Firefox gets the thin
+ * two-colour form; WebKit browsers get the full pseudo-element treatment.
+ */
+/* Firefox only: in Chrome the standard properties would switch off the pseudo-element styling below. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 201, 76, 0.55) rgba(10, 12, 20, 0.6);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, rgba(6, 8, 14, 0.85), rgba(18, 22, 32, 0.85));
+  border-left: 1px solid rgba(242, 201, 76, 0.12);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 30%, var(--gold-dark) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  min-height: 28px;
+  transition: box-shadow 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #fff6d0 0%, var(--gold-light) 25%, var(--gold) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 0 10px rgba(242, 201, 76, 0.65);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Only the dark glass: no scrollbar at all on the page itself or on the canvas. */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html,
+  body {
+    scrollbar-width: none;
+  }
+}

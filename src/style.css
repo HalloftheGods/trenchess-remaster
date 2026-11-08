@@ -1,6 +1,7 @@
 /* Trenchess Remastered: DOM reskin to match the in-engine UI kit (src/render/ui/art). */
 @import "./styles/base.css";
 @import "./styles/steel.css";
+@import "./styles/scrollbars.css";
 @import "./styles/buttons.css";
 @import "./styles/hud.css";
 @import "./styles/tray.css";
