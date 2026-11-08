@@ -1,24 +1,23 @@
 import Phaser from "phaser";
 import type { MatchOptions } from "../../game/Match";
-import type { Difficulty } from "../../engine/ai";
-import { theme, type PaletteId, type PieceStyle } from "../art/unitArt";
+import type { PaletteId, PieceStyle } from "../art/unitArt";
 import { paintUi } from "../ui/uiArt";
 import { motionMs } from "../ui/fonts";
-import { Button, Carousel, Panel, Segmented, Toggle, heading } from "../ui/widgets";
+import { Panel } from "../ui/widgets";
 import { bindKeys } from "../ui/widgets/common";
-import { SetupRows } from "./setup/SetupRows";
-import { OnlinePanel } from "./setup/OnlinePanel";
-import { BACKDROP_CHOICES, backdrop, type BackdropMode } from "../board/backdropMode";
-import { BOARDS, COMMANDERS, DUELS, MODES, OPPONENTS, ORDERS, PALETTE_CHOICES, PRESET_CHOICES, STYLE_CHOICES, loadOptions, saveOptions } from "./setup/choices";
-import type { DuelMode } from "../duel/duel";
-import { WORLD_LABELS, WORLD_ORDER, WORLD_TAGLINES, world } from "../art/worlds/registry";
+import { loadOptions, saveOptions } from "./setup/choices";
+import { buildStep, type BuiltStep } from "./setup/steps";
+import { WizardChrome } from "./setup/WizardChrome";
+import { SUMMARY_STEP, WIZARD_STEPS, type WizardCtx } from "./setup/wizard";
 
-const WORLD_CHOICES = WORLD_ORDER.map((id) => ({ id, label: WORLD_LABELS[id], hint: WORLD_TAGLINES[id] }));
-
-export const PANEL_W = 420;
+export const PANEL_W = 440;
 const MARGIN = 24;
 const PAD = 28;
 const INNER = PANEL_W - PAD * 2;
+const HEAD_H = 92;
+const BODY_H = 400;
+const FOOT_H = 64;
+const PANEL_H = PAD + HEAD_H + BODY_H + FOOT_H + PAD;
 
 export interface SetupData {
   /** Pre-select a mode (Lay Trenchess opens on Omega). */
@@ -26,18 +25,19 @@ export interface SetupData {
 }
 
 /**
- * Match setup as a steel panel over the live board. Every change emits `ui:setup-changed` so the
- * board behind it shows exactly the field the match would start on; chessmen style and colors
- * emit `ui:theme`. `ui:start` and `ui:back` leave the scene.
+ * Match setup as a stepped wizard over the live board: The Battle, The Board, Commanders, The Look,
+ * then a summary with To battle. Every change emits `ui:setup-changed` so the board behind it shows
+ * exactly the field the match would start on; chessmen style and colors emit `ui:theme`.
+ * `ui:start`, `ui:start-online` and `ui:back` leave the scene. Quick start skips to the summary.
  */
 export class SetupScene extends Phaser.Scene {
   private options!: MatchOptions;
   private root!: Phaser.GameObjects.Container;
   private panel!: Panel;
-  private rows!: SetupRows;
-  private battlefield!: Carousel;
-  private commander!: Segmented;
-  private online!: OnlinePanel;
+  private chrome!: WizardChrome;
+  private body: Phaser.GameObjects.Container | null = null;
+  private built: BuiltStep | null = null;
+  private step = 0;
   private unbindKeys: () => void = () => undefined;
   private leaving = false;
 
@@ -48,16 +48,27 @@ export class SetupScene extends Phaser.Scene {
   init(data: SetupData): void {
     this.options = loadOptions();
     if (data?.mode) this.options.mode = data.mode;
+    this.step = 0;
     this.leaving = false;
+    this.body = null;
+    this.built = null;
   }
 
   create(): void {
     paintUi(this);
     this.root = this.add.container(0, 0);
-    this.panel = new Panel(this, 0, 0, PANEL_W, 100);
+    this.panel = new Panel(this, 0, 0, PANEL_W, PANEL_H);
     this.root.add(this.panel);
-    this.rows = new SetupRows(this, this.root, PAD);
-    this.build();
+    this.chrome = new WizardChrome(this, this.root, {
+      pad: PAD,
+      inner: INNER,
+      bodyTop: PAD + HEAD_H,
+      footTop: PAD + HEAD_H + BODY_H,
+      back: () => this.prev(),
+      next: () => this.next(),
+      quick: () => this.goTo(SUMMARY_STEP, 1),
+    });
+    this.show(0, 0);
     this.layout();
     this.scale.on("resize", this.layout, this);
     this.unbindKeys = bindKeys(this, (e) => this.onKey(e));
@@ -66,69 +77,60 @@ export class SetupScene extends Phaser.Scene {
     this.changed();
   }
 
-  private build(): void {
-    const title = this.options.mode === "omega" ? "Lay Trenchess" : "Play Trenchess";
-    this.rows.add(heading(this, 0, 0, title, "h2"), 44);
-    this.rows.row("Mode", new Segmented(this, 0, 0, INNER, MODES, this.options.mode, (id) => this.setMode(id as MatchOptions["mode"])));
-    this.battlefield = new Carousel(this, 0, 0, INNER, PRESET_CHOICES, this.presetIndex(), (i) => this.set({ preset: PRESET_CHOICES[i].id }));
-    this.rows.row("Battlefield", this.battlefield, this.options.mode === "chi");
-    this.rows.row("Board", new Segmented(this, 0, 0, INNER, BOARDS, this.options.board, (id) => this.set({ board: id as MatchOptions["board"] })));
-    const worldAt = Math.max(0, WORLD_ORDER.indexOf(world.id));
-    this.rows.row("World", new Carousel(this, 0, 0, INNER, WORLD_CHOICES, worldAt, (i) => this.game.events.emit("ui:world", WORLD_CHOICES[i].id)));
-    this.rows.row("Opponent", new Segmented(this, 0, 0, INNER, OPPONENTS, this.options.opponent, (id) => this.setOpponent(id as MatchOptions["opponent"])));
-    this.commander = new Segmented(this, 0, 0, INNER, COMMANDERS, this.options.difficulty, (id) => this.set({ difficulty: id as Difficulty }));
-    this.rows.row("Commander", this.commander);
-    this.commander.setAlpha(this.options.opponent === "ai" ? 1 : 0.4);
-    this.online = new OnlinePanel(this, INNER, (start) => this.leave(() => this.game.events.emit("ui:start-online", start)));
-    this.rows.row("Online", this.online, this.options.opponent === "online");
-    this.rows.row("Orders", new Segmented(this, 0, 0, INNER, ORDERS, String(this.options.ordersPerTurn), (id) => this.set({ ordersPerTurn: Number(id) })));
-    this.rows.row("Duels", new Segmented(this, 0, 0, INNER, DUELS, this.options.duel ?? "full", (id) => this.set({ duel: id as DuelMode })));
-    const styleAt = Math.max(0, STYLE_CHOICES.findIndex((c) => c.id === theme.style));
-    this.rows.row("Chessmen", new Carousel(this, 0, 0, INNER, STYLE_CHOICES, styleAt, (i) => this.setTheme(STYLE_CHOICES[i].id as PieceStyle, theme.palette)));
-    this.rows.row("Colors", new Segmented(this, 0, 0, INNER, PALETTE_CHOICES, theme.palette, (id) => this.setTheme(theme.style, id as PaletteId)));
-    this.rows.row("Backdrop", new Segmented(this, 0, 0, INNER, BACKDROP_CHOICES, backdrop.mode, (id) => this.game.events.emit("ui:backdrop", id as BackdropMode)));
-    this.rows.add(new Toggle(this, 0, 0, "Fog of war (forests hide the enemy)", this.options.fog, (v) => this.set({ fog: v })), 40);
-    this.buttons();
+  private ctx(): WizardCtx {
+    return {
+      scene: this,
+      options: this.options,
+      inner: INNER,
+      set: (patch) => this.set(patch),
+      setTheme: (style, palette) => this.setTheme(style, palette),
+      emit: (event, payload) => this.game.events.emit(event, payload),
+      goTo: (step) => this.goTo(step, step < this.step ? -1 : 1),
+      refresh: () => this.show(this.step, 0),
+      leave: (then) => this.leave(then),
+    };
   }
 
-  private buttons(): void {
-    const row = this.add.container(0, 0);
-    const start = new Button(this, 0, 0, "To battle  ⏎", () => this.start(), { primary: true, w: INNER - 130 });
-    const back = new Button(this, INNER - 120, 0, "Back  Esc", () => this.back(), { w: 120 });
-    row.add([start, back]);
-    this.rows.add(row, 48);
+  /** Replaces the page; `dir` slides the new page in from that side (0 = no motion). */
+  private show(step: number, dir: -1 | 0 | 1): void {
+    this.built?.online?.cancel();
+    this.body?.destroy();
+    this.step = step;
+    this.body = this.add.container(PAD, PAD + HEAD_H);
+    this.root.add(this.body);
+    this.built = buildStep(step, this.ctx(), this.body);
+    this.chrome.update(step, this.options.opponent === "online");
+    if (dir === 0) return;
+    const x = this.body.x;
+    this.body.setX(x + 60 * dir).setAlpha(0);
+    this.tweens.add({ targets: this.body, x, alpha: 1, duration: motionMs(260), ease: "Cubic.Out" });
   }
 
-  private presetIndex(): number {
-    return Math.max(0, PRESET_CHOICES.findIndex((c) => c.id === this.options.preset));
+  private goTo(step: number, dir: -1 | 1): void {
+    const to = Phaser.Math.Clamp(step, 0, SUMMARY_STEP);
+    if (to === this.step) return;
+    this.show(to, dir);
+  }
+
+  private next(): void {
+    if (this.step === SUMMARY_STEP) return this.start();
+    this.goTo(this.step + 1, 1);
+  }
+
+  private prev(): void {
+    if (this.step === 0) return this.back();
+    this.goTo(this.step - 1, -1);
   }
 
   private layout(): void {
     const w = this.scale.width;
     const h = this.scale.height;
-    const contentH = this.rows.height + PAD * 2;
-    const k = Phaser.Math.Clamp((h - MARGIN * 2) / contentH, 0.6, 1);
-    this.panel.resize(PANEL_W, contentH);
-    this.root.setScale(k).setPosition(w - MARGIN - PANEL_W * k, (h - contentH * k) / 2);
+    const k = Phaser.Math.Clamp((h - MARGIN * 2) / PANEL_H, 0.6, 1);
+    this.root.setScale(k).setPosition(w - MARGIN - PANEL_W * k, (h - PANEL_H * k) / 2);
   }
 
   private set(patch: Partial<MatchOptions>): void {
     Object.assign(this.options, patch);
-    this.changed();
-  }
-
-  private setMode(mode: MatchOptions["mode"]): void {
-    this.options.mode = mode;
-    this.rows.show(this.battlefield, mode === "chi");
-    this.layout();
-    this.changed();
-  }
-
-  private setOpponent(opponent: MatchOptions["opponent"]): void {
-    this.options.opponent = opponent;
-    this.tweens.add({ targets: this.commander, alpha: opponent === "ai" ? 1 : 0.4, duration: motionMs(200) });
-    this.rows.show(this.online, opponent === "online");
-    this.layout();
     this.changed();
   }
 
@@ -142,10 +144,9 @@ export class SetupScene extends Phaser.Scene {
   }
 
   private onKey(e: KeyboardEvent): void {
-    const isTypingCode = this.options.opponent === "online" && this.online.key(e);
-    if (isTypingCode) return;
-    if (e.code === "Escape") this.back();
-    if (e.code === "Enter" || e.code === "NumpadEnter") this.start();
+    if (this.built?.online?.key(e)) return;
+    if (e.code === "Escape") this.prev();
+    if (e.code === "Enter" || e.code === "NumpadEnter") this.next();
   }
 
   private enter(): void {
@@ -171,12 +172,16 @@ export class SetupScene extends Phaser.Scene {
   }
 
   private start(): void {
-    if (this.options.opponent === "online") return void this.online.go({ ...this.options });
+    const online = this.built?.online;
+    if (this.options.opponent === "online") {
+      if (online) return void online.go({ ...this.options });
+      return this.goTo(2, -1);
+    }
     this.leave(() => this.game.events.emit("ui:start", { ...this.options }));
   }
 
   private back(): void {
-    this.online.cancel();
+    this.built?.online?.cancel();
     this.leave(() => this.game.events.emit("ui:back"));
   }
 
@@ -185,3 +190,5 @@ export class SetupScene extends Phaser.Scene {
     this.unbindKeys();
   }
 }
+
+export { WIZARD_STEPS };

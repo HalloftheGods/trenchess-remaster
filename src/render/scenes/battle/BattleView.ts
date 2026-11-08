@@ -23,7 +23,7 @@ const FRAME_MS = 450;
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 2.2;
 /** The setup panel plus its margins; the board centres in what is left of the screen. */
-const SETUP_PANEL = 470;
+const SETUP_PANEL = 488;
 /** Vertical padding and camera lift per projection when framing the board. */
 const PAD_H: Record<Projection, number> = { iso: 300, front: 220, top: 160 };
 const LIFT: Record<Projection, number> = { iso: 50, front: 30, top: 0 };
