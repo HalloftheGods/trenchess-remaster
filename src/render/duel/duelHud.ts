@@ -137,7 +137,8 @@ export class DuelHud {
     const back = this.scene.add.rectangle(0, 0, this.w, TOP_BAR - 1, INK).setOrigin(0, 0);
     this.ui.add(back);
     this.transient.push(back);
-    this.banner(textKey(this.scene, name, GOLD, 2, "#6a4a10"), 3, holdMs, -side * 40);
+    const big = textWidth(name, 2) <= this.w - 8;
+    this.banner(textKey(this.scene, name, GOLD, big ? 2 : 1, "#6a4a10"), big ? 3 : 7, holdMs, -side * 40);
     this.scene.time.delayedCall(holdMs + 220, () => back.destroy());
   }
 

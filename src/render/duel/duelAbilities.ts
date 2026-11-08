@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import type { UnitType } from "../../engine/types";
 import { duelSound } from "./duelSound";
 import type { DuelRun } from "./duelRun";
@@ -233,44 +234,63 @@ const leapOfFaith = async (c: Ctx): Promise<void> => {
   await r.wait(180);
 };
 
-/** Shadow Knight: three bounding leaps over a triple bar, the last one coming down lance-first on the foe. */
+/**
+ * Shadow Knight: wheels round for a run-up, then clears three separate bars one after another
+ * (gallop, leap, land) and comes down the last stretch lance-first on the foe.
+ */
 const tripleBarJump = async (c: Ctx): Promise<void> => {
   const { s, r } = c;
   const a = s.a;
+  const dir = s.dir;
   s.d.set("guard");
-  const x0 = a.x;
-  const end = contact(c, 0.9);
+  const end = contact(c, 1);
+  const x0 = Math.round(dir > 0 ? Math.max(16, a.x - 70) : Math.min(s.w - 16, a.x + 70));
+  a.face = (-dir) as 1 | -1;
+  a.run(12);
+  duelSound.gallop(4, r.ms(320));
+  moveTo(c, a, x0, 320, "Sine.InOut");
+  await r.wait(320);
+  a.face = dir;
   const span = end - x0;
-  const fences = [0.2, 0.52, 0.84].map((f) => s.fx.stay("fence", x0 + span * f, FLOOR_Y + 1, { anchor: "bottom", flipX: s.dir < 0, depthBehind: a.img }));
+  const bars = [0.22, 0.48, 0.74].map((f) => Math.round(x0 + span * f));
+  const fences = bars.map((x) => s.fx.stay("fence", x, FLOOR_Y + 1, { anchor: "bottom", depthBehind: a.img }));
+  bars.forEach((x) => s.fx.dust(x, false));
+  duelSound.step(true);
   duelSound.neigh();
   a.set("crouch");
-  await r.wait(240);
-  a.run(12);
-  s.hud.speed(true, s.dir);
+  await r.wait(280);
+  s.hud.speed(true, dir);
   s.trail(a, 0x8a7aff, 45);
-  const stops = [0.36, 0.68, 1];
-  for (let i = 0; i < 3; i++) {
-    const to = x0 + span * stops[i];
-    const last = i === 2;
+  const half = Phaser.Math.Clamp(Math.round(Math.abs(span) * 0.09), 10, 18);
+  for (let i = 0; i < bars.length; i++) {
+    const take = bars[i] - dir * half;
+    const runMs = Math.max(60, Math.round(Math.abs(take - a.x) * 3));
+    a.run(14);
+    duelSound.gallop(3, r.ms(runMs));
+    moveTo(c, a, take, runMs, "Linear");
+    await r.wait(runMs);
+    a.set("air");
     duelSound.whoosh(0.22, 0.3);
-    a.set(last ? "special" : "air");
-    const hop = arc(c, a, to, 18 + i * 8, last ? 360 : 300);
-    if (last) {
-      await r.wait(200);
-      a.set("attack0");
-      r.slow(0.3);
-      await r.wait(60);
-      a.set("attack1");
-    }
-    await hop;
-    s.fx.fadeOut(fences[i], 260);
-    land(c, a, last);
+    await arc(c, a, bars[i] + dir * half, 32 + i * 3, 320);
+    a.set("crouch");
+    land(c, a, false);
     duelSound.hoof(i);
-    if (!last) a.run(12);
+    await r.wait(60);
   }
+  const homeMs = Math.max(120, Math.round(Math.abs(end - a.x) * 3));
+  a.run(14);
+  moveTo(c, a, end, homeMs, "Quad.In");
+  await r.wait(Math.round(homeMs * 0.6));
+  a.set("windup");
+  await r.wait(Math.round(homeMs * 0.4));
+  r.slow(0.3);
+  a.set("attack0");
+  await r.wait(60);
+  a.set("attack1");
   s.stopTrails();
   s.hud.speed(false);
   await impact(c, 1, true, false, a.tip());
+  fences.forEach((f) => s.fx.fadeOut(f, 260));
   r.normal();
   await r.wait(180);
 };
@@ -313,7 +333,75 @@ const doubleBackFlip = async (c: Ctx): Promise<void> => {
   await r.wait(160);
 };
 
-/** Each chessman's classic ability, played as its attack. */
+interface ClassicStyle {
+  /** Run (mounted, nimble) or march (armoured) to the foe. */
+  running: boolean;
+  /** Height of a short hop into the blow (0: none). */
+  hop: number;
+  strikes: number;
+  heavy: boolean;
+}
+
+/** How each chessman makes its plain chess capture. */
+const CLASSIC: Record<UnitType, ClassicStyle> = {
+  king: { running: false, hop: 0, strikes: 2, heavy: false },
+  queen: { running: true, hop: 0, strikes: 1, heavy: false },
+  rook: { running: false, hop: 0, strikes: 1, heavy: true },
+  bishop: { running: false, hop: 0, strikes: 2, heavy: false },
+  knight: { running: true, hop: 16, strikes: 1, heavy: false },
+  pawn: { running: true, hop: 10, strikes: 2, heavy: false },
+};
+
+/**
+ * The classic chess capture, for orders that used the plain move rather than the upgraded one:
+ * the chessman closes in (the pawn's forward-diagonal joust, the knight's trot, the rook's march)
+ * and strikes, without the ability's showpiece.
+ */
+export const classicAttack = async (c: Ctx): Promise<void> => {
+  const { s, r } = c;
+  const a = s.a;
+  const st = CLASSIC[a.unit.type];
+  s.d.set("guard");
+  const end = contact(c, 1);
+  const pace = st.running ? 3.4 : 6;
+  const ms = Phaser.Math.Clamp(Math.round(Math.abs(end - a.x) * pace), 200, 720);
+  a.run(st.running ? 13 : 8);
+  if (a.mounted) duelSound.gallop(5, r.ms(ms));
+  if (st.hop > 0) {
+    const ground = Math.round(ms * 0.7);
+    moveTo(c, a, end - s.dir * 22, ground, "Linear");
+    await r.wait(ground);
+    a.set("air");
+    duelSound.whoosh(0.2, 0.3);
+    await arc(c, a, end, st.hop, 240);
+    a.set("crouch");
+    land(c, a, false);
+    await r.wait(70);
+  } else {
+    moveTo(c, a, end, ms, "Sine.InOut");
+    for (let i = 0; i < 3; i++) {
+      await r.wait(Math.round(ms / 3));
+      if (!st.running) duelSound.step(st.heavy);
+    }
+  }
+  for (let i = 0; i < st.strikes; i++) {
+    const last = i === st.strikes - 1;
+    a.set("windup");
+    await r.wait(st.heavy ? 220 : 140);
+    if (last) r.slow(0.4);
+    a.set("attack0");
+    duelSound.slash();
+    await r.wait(50);
+    a.set("attack1");
+    if (st.heavy) s.fx.dust(s.d.x, true);
+    await impact(c, last ? 0.9 : 0.4, last, !st.heavy, a.tip());
+    if (!last) await r.wait(120);
+  }
+  r.normal();
+  await r.wait(160);
+};
+
+/** Each chessman's named Trenchess ability, played when the capture used its upgraded move. */
 export const ABILITIES: Record<UnitType, (c: Ctx) => Promise<void>> = {
   king: somersaultAssault,
   queen: eightLeggedGallop,

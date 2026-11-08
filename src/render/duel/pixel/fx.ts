@@ -33,7 +33,7 @@ export interface FxSheet {
  *   ring    ~64x14, 3 frames: a flattened ground shockwave ellipse expanding
  *   shard   ~5x5, 2 frames: a tumbling fragment
  *   pillar  ~16x56, 3 frames: a stone spike erupting from the ground (grows, full, cracked)
- *   fence   ~28x30, 1 frame: a show-jumping triple bar (three rising striped rails on posts)
+ *   fence   18x26, 1 frame: one show-jumping bar (striped pole between two capped posts)
  *   rune    ~88x18, 2 frames: a flattened glowing diamond-in-circle rune on the ground
  *   cloud   ~16x10, 3 frames: a little white nimbus puff (the Nimbus Jumper's landing)
  *   beam    ~24x8, 1 frame: one horizontal slice of a vertical light beam (tiled downward)
@@ -620,13 +620,13 @@ const pillarCracked = (): Grid => {
 const PILLAR: Grid[] = [pillarRising(), pillarFull(), pillarCracked()];
 
 // ---------------------------------------------------------------------------------------------
-// fence: 28x30 show-jumping triple bar: three red/white striped rails on white posts, rising
-// from the low front rail (left) to the high back rail (right).
+// fence: 18x26 one show-jumping bar: two white wings with capped posts and a red/white striped
+// pole between them, a thinner ground pole below. The knight clears three of these in a row.
 // ---------------------------------------------------------------------------------------------
+const FENCE_W = 18;
+const FENCE_H = 26;
 const fenceGrid = (): Grid => {
-  const W = 28;
-  const H = 30;
-  const g = Array.from({ length: H }, () => Array.from({ length: W }, () => "."));
+  const g = Array.from({ length: FENCE_H }, () => Array.from({ length: FENCE_W }, () => "."));
   const post = (x: number, top: number): void => {
     // a rounded cap, then a 2px white upright (lit left, light-grey right) in an outline
     g[top][x + 1] = "o";
@@ -635,39 +635,30 @@ const fenceGrid = (): Grid => {
     g[top + 1][x + 1] = "W";
     g[top + 1][x + 2] = "W";
     g[top + 1][x + 3] = "o";
-    for (let y = top + 2; y < H; y++) {
+    for (let y = top + 2; y < FENCE_H; y++) {
+      const foot = y === FENCE_H - 1;
       g[y][x] = "o";
-      g[y][x + 1] = y === H - 1 ? "o" : "W";
-      g[y][x + 2] = y === H - 1 ? "o" : "L";
+      g[y][x + 1] = foot ? "o" : "W";
+      g[y][x + 2] = foot ? "o" : "L";
       g[y][x + 3] = "o";
     }
   };
-  const rail = (x0: number, top: number): void => {
-    const len = 14;
-    for (let x = x0; x < x0 + len; x++) {
-      const j = x - x0 - 1;
-      const red = Math.floor(j / 3) % 2 === 1;
-      const end = x === x0 || x === x0 + len - 1;
-      g[top][x] = end ? "." : "o";
-      const body = (plain: string): string => {
-        if (end) return "o";
-        if (red) return "R";
-        return plain;
-      };
-      g[top + 1][x] = body("W");
-      g[top + 2][x] = body("W");
-      g[top + 3][x] = body("L");
-      g[top + 4][x] = end ? "." : "o";
+  /** A striped pole `thick` pixels deep (plus its outline) between the posts. */
+  const pole = (top: number, thick: number): void => {
+    for (let x = 3; x < FENCE_W - 3; x++) {
+      const red = Math.floor((x - 3) / 3) % 2 === 1;
+      g[top][x] = "o";
+      for (let k = 1; k <= thick; k++) {
+        const shade = k === thick ? "L" : "W";
+        g[top + k][x] = red ? "R" : shade;
+      }
+      g[top + thick + 1][x] = "o";
     }
   };
-  // back to front: the high back rail, the middle one, the low front one. Each rail hangs between
-  // its two posts, the posts' caps standing a little proud of it.
-  const bars: [number, number][] = [[14, 6], [7, 13], [0, 20]];
-  for (const [x0, top] of bars) {
-    post(x0, top - 3);
-    post(x0 + 10, top - 3);
-    rail(x0, top);
-  }
+  post(0, 2);
+  post(FENCE_W - 4, 2);
+  pole(6, 3);
+  pole(16, 2);
   return g.map((r) => r.join(""));
 };
 
@@ -683,7 +674,7 @@ export const FX: Record<FxId, FxSheet> = {
   ring: { w: 64, h: 14, frames: RING },
   shard: { w: 5, h: 5, frames: SHARD },
   pillar: { w: PW, h: PH, frames: PILLAR },
-  fence: { w: 28, h: 30, frames: FENCE },
+  fence: { w: FENCE_W, h: FENCE_H, frames: FENCE },
   rune: { w: 88, h: 18, frames: RUNE },
   cloud: { w: 16, h: 10, frames: CLOUD },
   beam: { w: 24, h: 8, frames: BEAM },
