@@ -1,6 +1,6 @@
 import type { Cell, GameState, Order, PlayerId, Pos, Terrain, TurnEvent } from "../engine/types";
 import { applyOrder, cloneState, createGame, endTurn, legalOrders, unitsInDanger } from "../engine/game";
-import { isInCheck, findKing } from "../engine/moves";
+import { isInCheck, findKing, pseudoMovesFor } from "../engine/moves";
 import { canDeployTo, canPlaceTerrain, createArmies, randomBattlefield, randomTerrainFor, seededRng, swapUnits, terrainCount } from "../engine/setup";
 import { TERRAIN_QUOTA, deployRows, homeRows, inRows, opponent } from "../engine/rules";
 import { emptyGrid } from "../engine/game";
@@ -142,10 +142,28 @@ export class Match {
 
   hover(cell: Pos | null): void {
     this.boardView.setHover(cell);
+    this.boardView.clearPreview();
+    this.units.ghost(null, null);
     if (!cell) return;
     const u = this.board[cell[0]][cell[1]];
     const shown = u && this.unitVisible(cell) ? u : null;
     this.hud.inspect(shown, this.terrain[cell[0]][cell[1]]);
+    if (this.phase === "battle" && !this.busy) this.previewBattle(cell, shown);
+  }
+
+  private previewBattle(cell: Pos, unit: Cell): void {
+    const s = this.state!;
+    if (this.selected) {
+      const order = this.legal.find((o) => samePos(o.from, this.selected!) && samePos(o.to, cell));
+      if (order) {
+        this.units.ghost(s.board[order.from[0]][order.from[1]], cell);
+        this.boardView.showPreview(order.path.slice(0, -1), "dot", 0.8);
+      }
+      return;
+    }
+    if (!unit || unit.owner === s.current || !this.isHuman(s.current)) return;
+    const reach = pseudoMovesFor(s.board, s.terrain, cell).map((o) => o.to);
+    this.boardView.showPreview(reach, "danger", 0.35);
   }
 
   private unitVisible(pos: Pos): boolean {
@@ -278,6 +296,8 @@ export class Match {
     const s = this.state!;
     this.busy = true;
     this.boardView.clearMarkers();
+    this.boardView.clearPreview();
+    this.units.ghost(null, null);
     for (const e of events) await this.animate(e, before);
     this.board = s.board;
     this.units.sync(s.board);

@@ -209,6 +209,23 @@ export class UnitView {
     await this.wait(400);
   }
 
+  private ghostImg: Phaser.GameObjects.Image | null = null;
+
+  ghost(unit: Unit | null, at: Pos | null): void {
+    this.ghostImg?.destroy();
+    this.ghostImg = null;
+    if (!unit || !at) return;
+    const { x, y } = this.board.center(at[0], at[1]);
+    this.ghostImg = this.scene.add
+      .image(x, y, unitKey(unit.type, unit.owner))
+      .setOrigin(0.5, UNIT_FOOT / UNIT_H)
+      .setScale(0.82)
+      .setAlpha(0.45)
+      .setTintFill(0xbff6ff)
+      .setDepth(depthOf(at[0], at[1], LAYER.unit) + 0.5);
+    this.scene.tweens.add({ targets: this.ghostImg, alpha: 0.2, duration: 500, yoyo: true, repeat: -1 });
+  }
+
   setSpent(ids: number[]): void {
     for (const [id, t] of this.tokens) {
       if (ids.includes(id)) t.body.setTint(0x8a8a8a);

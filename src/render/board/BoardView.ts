@@ -21,6 +21,7 @@ const variantOf = (r: number, c: number): number => (r * 7 + c * 13) % VARIANTS;
 export class BoardView {
   private tiles: TileSprites[][] = [];
   private markers: Phaser.GameObjects.Image[] = [];
+  private preview: Phaser.GameObjects.Image[] = [];
   private hover: Phaser.GameObjects.Image;
   private terrain: Terrain[][] = [];
 
@@ -94,6 +95,19 @@ export class BoardView {
       }
       this.markers.push(m);
     }
+  }
+
+  showPreview(cells: Pos[], kind: MarkerKind, alpha: number): void {
+    this.clearPreview();
+    for (const [r, c] of cells) {
+      const { x, y } = this.center(r, c);
+      this.preview.push(this.scene.add.image(x, y, `mk-${kind}`).setDepth(depthOf(r, c, LAYER.marker)).setAlpha(alpha));
+    }
+  }
+
+  clearPreview(): void {
+    this.preview.forEach((m) => m.destroy());
+    this.preview = [];
   }
 
   clearMarkers(): void {
