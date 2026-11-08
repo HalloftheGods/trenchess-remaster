@@ -33,6 +33,9 @@ export class Backdrop {
     this.ground = scene.add.graphics().setDepth(-99);
     this.ground.fillGradientStyle(0x2a2126, 0x2a2126, 0x05060a, 0x05060a, 1);
     this.ground.fillRect(-3000, 0, 6000, 2600);
+    // soften the horizon: the sky melts into the dark ground instead of ending on a hard line
+    this.ground.fillGradientStyle(0x2a2126, 0x2a2126, 0x2a2126, 0x2a2126, 0, 0, 1, 1);
+    this.ground.fillRect(-3000, -260, 6000, 260);
     this.stars = scene.add.tileSprite(0, 0, 4200, 4200, "sky-stars").setBlendMode("ADD").setAlpha(0.5).setDepth(-98);
     this.peaks = scene.add.image(0, 0, "sky-peaks").setOrigin(0.5, 1).setScale(1.4).setDepth(-97);
     this.haze = scene.add.image(0, 0, "glow").setBlendMode("ADD").setTint(0xf0b070).setScale(48, 1.3).setAlpha(0.08).setDepth(-96);
