@@ -7,6 +7,7 @@ import { TitleScene } from "./render/scenes/TitleScene";
 import { SetupScene } from "./render/scenes/SetupScene";
 import { OverlayScene } from "./render/scenes/OverlayScene";
 import { Match, type MatchOptions } from "./game/Match";
+import type { OnlineStart } from "./net/onlineMatch";
 import { Hud } from "./ui/Hud";
 import { STYLE_ORDER, applyTheme, paintUnits, theme, unitKey, type PaletteId, type PieceStyle } from "./render/art/unitArt";
 import { sfx } from "./audio/sfx";
@@ -19,6 +20,7 @@ import { paintSky } from "./render/art/skyArt";
 import { paintPlinth } from "./render/art/plinthArt";
 import { applyWorld, isWorldId } from "./render/art/worlds/registry";
 import { bindViewControls } from "./ui/viewControls";
+import { loadBackdropMode, saveBackdropMode, type BackdropMode } from "./render/board/backdropMode";
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 
@@ -115,7 +117,7 @@ const openPanel = (name: "hello" | "educate"): void => {
   if (name === "educate") chessmen.render();
 };
 
-const startMatch = (options: MatchOptions): void => {
+const startMatch = (options: MatchOptions, online?: OnlineStart): void => {
   lastOptions = options;
   $("#over").classList.add("hidden");
   scene.setDrift(false);
@@ -124,7 +126,8 @@ const startMatch = (options: MatchOptions): void => {
   overlay().setShown(true);
   hud.show(true);
   hud.clearLog();
-  match.start(options);
+  if (online) match.startOnline(online.options, online.duel, online.seed);
+  else match.start(options);
   music.setMood("battle");
   if (match.phase === "deploy") hud.banner("Deployment", match.terrainLocked ? "The Trench is laid. Position your army." : "Shape the battlefield and position your army");
 };
@@ -147,7 +150,12 @@ const bindFlow = (): void => {
   ev.on("ui:theme", ({ style, palette }: { style: PieceStyle; palette: PaletteId }) => setTheme(style, palette));
   ev.on("ui:world", (id: string) => setWorld(id));
   ev.on("ui:start", (options: MatchOptions) => startMatch(options));
+  ev.on("ui:start-online", (start: OnlineStart) => startMatch(start.options, start));
   ev.on("ui:back", toTitle);
+  ev.on("ui:backdrop", (mode: BackdropMode) => {
+    saveBackdropMode(mode);
+    scene.backdrop.setMode(mode);
+  });
   bindViewControls(game, () => scene, () => match.refresh(), lifetime.signal);
 };
 
@@ -159,7 +167,11 @@ const bindUi = (): void => {
     "end-turn": () => void match.endTurnNow(),
     menu: toTitle,
     "to-menu": toTitle,
-    again: () => lastOptions && startMatch(lastOptions),
+    // An online rematch needs a new room, so it goes back to setup.
+    again: () => {
+      if (lastOptions?.opponent === "online") openSetup();
+      else if (lastOptions) startMatch(lastOptions);
+    },
     "rotate-left": () => game.events.emit("ui:view", { action: "rotate", delta: -1 }),
     "rotate-right": () => game.events.emit("ui:view", { action: "rotate", delta: 1 }),
     style: nextStyle,
@@ -184,7 +196,8 @@ const bindUi = (): void => {
       match.cancel();
       if (!$("#panels").classList.contains("hidden")) toTitle();
     }
-    if (e.code === "KeyT") nextStyle();
+    // T is a room code letter, so it only cycles styles outside the setup panel.
+    if (e.code === "KeyT" && !game.scene.isActive("setup")) nextStyle();
   }, { signal: lifetime.signal });
 };
 
@@ -200,6 +213,7 @@ const bindMusic = (): void => {
 const boot = (s: BattleScene): void => {
   scene = s;
   loadTheme();
+  s.backdrop.setMode(loadBackdropMode(), 0);
   paintUnits(s);
   hud = new Hud((type, owner) => s.textures.getBase64(unitKey(type, owner)), (t) => terrainStrip(s, t));
   match = new Match(s.board, s.units, hud);

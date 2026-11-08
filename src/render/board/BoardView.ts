@@ -23,15 +23,45 @@ export class BoardView {
   /** Called at the start of every relayout with its duration, so lighting, particles and backdrop can follow. */
   onRelayout: ((duration: number) => void) | null = null;
 
+  /** Called after the tiles were rebuilt for another board size (camera, plinth and lights must refit). */
+  onResized: (() => void) | null = null;
+
   constructor(private scene: Phaser.Scene) {
-    for (let r = 0; r < BOARD_SIZE; r++) {
-      this.tiles.push([]);
-      for (let c = 0; c < BOARD_SIZE; c++) this.tiles[r].push(createTile(scene, r, c));
-    }
+    this.build();
     this.hover = scene.add.image(0, 0, markerKey("hover")).setVisible(false);
   }
 
+  private build(): void {
+    this.tiles = [];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      this.tiles.push([]);
+      for (let c = 0; c < BOARD_SIZE; c++) this.tiles[r].push(createTile(this.scene, r, c));
+    }
+    this.dressed = getProjection();
+  }
+
+  /** Tears the tiles down and lays a fresh grid for the current `BOARD_SIZE`. */
+  private rebuild(): void {
+    this.clearMarkers();
+    this.clearPreview();
+    this.setHover(null);
+    this.tiles.flat().forEach((s) => {
+      s.shimmer?.remove();
+      [s.tile, s.back, s.front, s.fog, s.glint].forEach((o) => o.destroy());
+    });
+    this.build();
+    this.onResized?.();
+  }
+
+  get size(): number {
+    return this.tiles.length;
+  }
+
   setTerrain(terrain: Terrain[][]): void {
+    if (terrain.length !== this.tiles.length) {
+      this.terrain = terrain;
+      this.rebuild();
+    }
     this.terrain = terrain;
     terrain.forEach((row, r) => row.forEach((t, c) => this.applyCell(r, c, t)));
     this.onTerrainChanged?.();

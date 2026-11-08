@@ -81,7 +81,7 @@ export const CLASSIC: WorldRecipe = {
       [1, "#f6d4a0"],
     ],
     sun: { x: 0.27, y: 0.86, glow: "#ffd696", core: "#fffae6", spread: 0.42 },
-    haze: "rgba(255,225,190,0.35)",
+    haze: "rgba(255,225,190,0.18)",
     stars: 90,
     starColor: "#ffffff",
     peaks: ["rgba(120,104,150,0.45)", "rgba(84,72,118,0.7)", "rgba(52,44,80,0.95)", "#f0be96"],
