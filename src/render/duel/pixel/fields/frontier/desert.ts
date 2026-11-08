@@ -185,7 +185,12 @@ const paintFront = (p: PixelPainter): void => {
     const w = r.replace(/./g, (c) => c + c);
     return [w, w];
   });
-  p.stamp(big, 280, p.h - 46, { o: "#141808", d: "#1e2410", m: "#283018", l: "#6a5a2a" });
+  p.stamp(big, 280, p.h - 46, { o: "#141808", d: "#1e2410", m: "#283018", l: "#3a4020" });
+  // a thin warm rim on the sun-facing (left) edge of every lit body run
+  big.forEach((row, j) => {
+    for (let i = 1; i < row.length; i++)
+      if (row[i] !== "." && row[i] !== "o" && (row[i - 1] === "o" || row[i - 1] === ".")) p.px(280 + i, p.h - 46 + j, j % 4 === 0 ? "#c07a3a" : "#8a5a2a");
+  });
 };
 
 const field: Battlefield = {

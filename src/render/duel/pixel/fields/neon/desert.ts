@@ -17,12 +17,13 @@ const SKY: [number, string][] = [
   [48, "#1f1220"],
   [62, "#2c1822"],
   [76, "#3c2024"],
-  [90, "#4e2a26"],
-  [102, "#603828"],
+  [90, "#56302a"],
+  [102, "#6e4228"],
 ];
 const STARS = ["#2e2232", "#6a5a6a", "#f0e0d0"];
 const SMOG = { hi: "#5a3428", lo: "#4a2a24" };
 const FAR = { walls: ["#1e1618", "#221a1a", "#1a1416"], rim: "#3a2a26", windows: ["#8a5a2a", "#6a3a22"] };
+const CITY = { haze: "#3a2026", walls: ["#1c1218", "#20141a", "#181016"], rim: "#34222a", windows: ["#a0602a", "#7a4226", "#c08040"] };
 const DECK = { top: "#5e5651", face: "#3a3430", under: "#201c18", lip: "#7a706a", rail: "#4a4440" };
 const PILLAR = { lit: "#4e4844", base: "#3a3430", shade: "#2a2522" };
 const SODIUM = { lamp: "#ffd8a0", glow: NEON.amber, warm: "#8a5a2a", pole: "#2a2522", poleLit: "#4a4440" };
@@ -30,7 +31,7 @@ const SODIUM = { lamp: "#ffd8a0", glow: NEON.amber, warm: "#8a5a2a", pole: "#2a2
 const SLAB = ["#5e5651", "#57504b", "#524b46", "#4a4440", "#433d3a", "#3a3430", "#332e2b"];
 const SSTOP = [116, 121, 127, 136, 148, 160, 171];
 const JOINT = "#2e2a27";
-const CRACK = { dark: "#201c18", glow: "#8a5a32" };
+const CRACK = { dark: "#201c18", glow: "#c07a3a" };
 const RUBBLE = { o: "#201c18", d: "#3a3430", m: "#5a524c", l: "#7a706a", r: "#8a4a2a" };
 
 // ---------------------------------------------------------------- sky
@@ -40,6 +41,24 @@ const paintSky = (p: PixelPainter): void => {
 
 const paintSmog = (p: PixelPainter): void => {
   smog(p, [[16, 72, 66], [110, 82, 48], [190, 68, 58], [270, 86, 44]], SMOG.hi, SMOG.lo);
+};
+
+/** The lit city far off across the wasteland, rising over the expressway deck. */
+const paintCity = (p: PixelPainter): void => {
+  p.dither(0, 52, TILE_W, 10, CITY.haze, 3);
+  p.dither(0, 62, TILE_W, 16, CITY.haze, 7);
+  // two lattice pylons carrying power across the waste
+  for (const x of [58, 218]) {
+    p.line(x - 7, 76, x, 30, CITY.rim);
+    p.line(x + 7, 76, x, 30, CITY.rim);
+    for (let y = 38; y < 76; y += 7) p.line(x - Math.round((y - 30) / 6.6), y, x + Math.round((y + 7 - 30) / 6.6), y + 7, CITY.rim);
+    p.hline(x - 8, 36, 17, CITY.rim);
+    p.hline(x - 6, 44, 13, CITY.rim);
+    p.px(x - 8, 37, NEON.amber);
+    p.px(x + 8, 37, NEON.amber);
+    p.px(x, 29, "#ff3b5a");
+  }
+  skyline(p, { seed: 83, base: 76, bottom: 80, minH: 6, maxH: 30, minW: 8, maxW: 20, gap: 1, walls: CITY.walls, rim: CITY.rim, windows: CITY.windows, litChance: 0.22, beacon: "#ff3b5a" });
 };
 
 const paintFar = (p: PixelPainter): void => {
@@ -127,8 +146,8 @@ const paintGround = (p: PixelPainter): void => {
   // pools of sodium light under the lamps, banded rather than smooth
   for (const x of LAMPS) {
     p.ellipse(x + 8, 134, 34, 7, slabAt(121));
-    p.ellipse(x + 8, 134, 24, 5, SLAB[0]);
-    p.ellipse(x + 8, 134, 14, 3, "#6e6058");
+    p.ellipse(x + 8, 134, 24, 5, "#64584c");
+    p.ellipse(x + 8, 134, 14, 3, "#74624e");
   }
   // cracks with an ember-orange glint along one lip
   const CRACKS: [number, number, number[]][] = [
@@ -167,21 +186,24 @@ const paintGround = (p: PixelPainter): void => {
 
 // ---------------------------------------------------------------- foreground
 const BARRIER: Grid = [
-  "....llllllllllllllll....",
-  "...lmmmmmmmmmmmmmmmmd...",
-  "...lmhhmmmhhmmmhhmmmd...",
-  "...lmmhhmmmhhmmmhhmmd...",
-  "..lmmmmmmmmmmmmmmmmmmd..",
-  ".lmmmmmmmmmmmmmmmmmmmmd.",
-  "lmmmmmmmmmmmmmmmmmmmmmmd",
-  "dddddddddddddddddddddddd",
+  ".....llllllllllllllllll.....",
+  "....lmmmmmmmmmmmmmmmmmmd....",
+  "....lhhmmmhhhmmmhhhmmmhd....",
+  "....lmhhhmmmhhhmmmhhhmmd....",
+  "....lmmmmmmmmmmmmmmmmmmd....",
+  "...lmmmmmmmmmmmmmmmmmmmmd...",
+  "..lmmmmmmmmmmmmmmmmmmmmmmd..",
+  ".lmmmmmmmmmmmmmmmmmmmmmmmmd.",
+  "lmmmmmmmmmmmmmmmmmmmmmmmmmmd",
+  "lmmmmmmmmmmmmmmmmmmmmmmmmmmd",
+  "dddddddddddddddddddddddddddd",
 ];
 
 const paintFront = (p: PixelPainter): void => {
   const pal = { l: "#8a807a", m: "#5e5651", d: "#2e2a27", h: NEON.amber };
-  p.stamp(BARRIER, -6, p.h - BARRIER.length, pal);
-  p.stamp(BARRIER, 18, p.h - BARRIER.length + 1, pal);
-  p.stamp(BARRIER, 252, p.h - BARRIER.length, pal);
+  p.stamp(BARRIER, -10, p.h - BARRIER.length + 1, pal);
+  p.stamp(BARRIER, 16, p.h - BARRIER.length + 2, pal);
+  p.stamp(BARRIER, 262, p.h - BARRIER.length + 1, pal);
 };
 
 const field: Battlefield = {
@@ -191,6 +213,7 @@ const field: Battlefield = {
   layers: [
     { parallax: 0.05, paint: paintSky },
     { parallax: 0.08, drift: 2, paint: paintSmog },
+    { parallax: 0.12, paint: paintCity },
     { parallax: 0.2, paint: paintFar },
     { parallax: 0.5, paint: paintHighway },
     { parallax: 1, paint: paintGround },

@@ -171,12 +171,18 @@ const paintGround = (p: PixelPainter): void => {
   }
   // dry grass clumps, bigger lower down; never on the trail
   p.reseed(9191);
-  for (let k = 0; k < 120; k++) {
-    const y = 118 + Math.floor(Math.pow(p.rand(), 0.8) * 60);
-    const x = Math.floor(p.rand() * TILE_W);
-    const g = tuftFor(y);
-    if (onTrack(x, y, g[0].length)) continue;
-    plant(p, g, x, y, tuftPal(y));
+  // placed in small drifts of two to four clumps so the field reads as patches, not polka dots
+  for (let k = 0; k < 42; k++) {
+    const y0 = 118 + Math.floor(Math.pow(p.rand(), 0.8) * 60);
+    const x0 = Math.floor(p.rand() * TILE_W);
+    const n = 2 + Math.floor(p.rand() * 3);
+    for (let i = 0; i < n; i++) {
+      const y = y0 + Math.floor(p.rand() * 4) - 1;
+      const x = x0 + i * (3 + Math.floor((y - 110) / 12)) + Math.floor(p.rand() * 2);
+      const g = tuftFor(y);
+      if (onTrack(x, y, g[0].length)) continue;
+      plant(p, g, x, y, tuftPal(y));
+    }
   }
   // grass overhanging the near edge of the trail
   p.reseed(613);

@@ -106,7 +106,11 @@ const paintGround = (p: PixelPainter): void => {
   for (let x = 0; x < TILE_W; x++) {
     const e = Math.round(GSTOP[0] - 1 - 0.8 * wave(x, 11, 0.7) - 0.6 * wave(x, 17, 2));
     p.vline(x, e, GSTOP[0] - e, GROUND[0]);
-    p.px(x, e, "#a0aa58");
+    // the stand's shade falls across the meadow's far edge, broken by grass blades
+    p.hline(x, e, 1, GROUND[4]);
+    if ((x + Math.floor(x / 7)) % 2 === 0) p.px(x, e + 1, GROUND[3]);
+    if (x % 3 === 0) p.vline(x, e - 1 - (x % 2), 1 + (x % 2), GROUND[4]);
+    if (x % 3 === 1 && (x * 7) % 5 < 2) p.px(x, e - 1, GROUND[3]);
   }
   // low-sun streaks: long warm light shafts lying across the floor between tree shadows
   for (let y = GSTOP[0]; y < p.h; y++)
@@ -170,7 +174,11 @@ const paintFront = (p: PixelPainter): void => {
   p.vline(311, 0, p.h, "#5a3a22");
   // bark plates: short staggered ridges
   for (let y = 2; y < p.h; y += 5)
-    for (let i = 0; i < 2; i++) p.hline(302 + i * 5 + (Math.floor(y / 5) % 2) * 2, y, 3, "#3a2616");
+    for (let i = 0; i < 2; i++) {
+      const bx = 302 + i * 5 + (Math.floor(y / 5) % 2) * 2;
+      p.hline(bx, y, 3, "#4a3220");
+      p.px(bx + 3, y + 1, "#140c06");
+    }
   // a bough hanging into the top corner
   for (let j = 0; j < 22; j++) {
     const half = Math.round(18 - j * 0.7 + 2 * wave(j * 13, 3, 0.4));

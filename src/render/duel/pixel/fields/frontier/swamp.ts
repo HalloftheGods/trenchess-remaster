@@ -18,7 +18,7 @@ const WATER = { deep: "#5a4030", mid: "#7a5a3a", sky: "#b0603a", glint: "#f0b060
 const GROUND = ["#9a8a5c", "#8a7a52", "#7e6e4a", "#706040", "#5e5038", "#504430"];
 const GSTOP = [119, 123, 128, 135, 150, 165];
 const MUD = { crack: "#4a3c28", crackLit: "#aa9a6a", wet: "#6a5a3c", wetLit: "#a69468" };
-const REED: Palette = { l: "#c8b070", m: "#b8a060", d: "#8a7a40", h: "#6a4a2a" };
+const REED: Palette = { l: "#b49c60", m: "#8a7646", d: "#5e5034", h: "#5a3a22" };
 
 // ---------------------------------------------------------------- far: mesas and a cottonwood line
 const FAR_MESAS: Mesa[] = [
@@ -68,12 +68,17 @@ const paintCreek = (p: PixelPainter): void => {
   }
   // water: deep brown, with bands of reflected sky toward the near bank
   strata(p, [[WATER_TOP, WATER.deep], [106, WATER.mid], [112, WATER.sky]], WATER_BOT, 2);
-  // ripple lines
-  for (let y = WATER_TOP + 1; y < WATER_BOT; y += 2)
-    for (let x = 0; x < TILE_W; x++) {
-      const r = wave(x, 9 + y, y * 0.7) + 0.5 * wave(x, 31, y);
-      if (r > 1.05) p.hline(x, y, 2, y < 110 ? WATER.sky : WATER.glint);
+  // ripple lines: a few long, calm dashes per row, spaced on a loose rhythm
+  p.reseed(902);
+  for (let y = WATER_TOP + 2; y < WATER_BOT - 1; y += 3) {
+    const near = (y - WATER_TOP) / (WATER_BOT - WATER_TOP);
+    const len = 4 + Math.round(near * 8);
+    for (let x = Math.floor(p.rand() * 30); x < TILE_W; x += 26 + Math.floor(p.rand() * 30)) {
+      if (Math.abs(wdx(x, 224)) < 30) continue;
+      p.hline(x, y, len, y < 110 ? WATER.mid : WATER.deep);
+      p.hline(x + 2, y - 1, len - 3, y < 110 ? WATER.sky : WATER.mid);
     }
+  }
   // the sun's glare: broken horizontal dashes, wider toward the near bank
   for (let y = WATER_TOP + 1; y < WATER_BOT; y += 2) {
     const half = 2 + Math.round((y - WATER_TOP) * 0.9);
@@ -205,16 +210,40 @@ const paintGround = (p: PixelPainter): void => {
 };
 
 // ---------------------------------------------------------------- foreground
+/** A cattail stand: stems fanning from a dark root, a few seed heads, rim-lit on the sun side. */
+const cattails = (p: PixelPainter, cx: number, h: number, seed: number): void => {
+  const STEM = "#2e2416", LIT = "#6a4a2a", HEAD = "#4a2e1a";
+  for (let k = 0; k < 9; k++) {
+    const off = ((k * 5 + seed) % 11) - 5;
+    const sh = Math.round(h * (0.55 + (((k * 7 + seed) % 5) * 0.1)));
+    const lean = off / 6;
+    for (let j = 0; j < sh; j++) {
+      const x = cx + off + Math.round(lean * j * 0.35);
+      p.px(x, p.h - 1 - j, STEM);
+      if (k % 3 === 1 && j > 3) p.px(x - 1, p.h - 1 - j, LIT);
+    }
+    if (k % 3 !== 2) {
+      const tx = cx + off + Math.round(lean * sh * 0.35);
+      p.rect(tx - 1, p.h - sh - 4, 2, 4, HEAD);
+      p.px(tx - 1, p.h - sh - 4, LIT);
+      p.px(tx, p.h - sh - 6, STEM);
+      p.px(tx, p.h - sh - 5, STEM);
+    }
+  }
+  p.rect(cx - 7, p.h - 2, 15, 2, STEM);
+};
+
 const paintFront = (p: PixelPainter): void => {
   const d = "#2e2416";
-  // tall reed stands rising from the bottom corners
+  // a low, ragged fringe of sedge along the bottom
   for (let x = 0; x < TILE_W; x++) {
-    const tall = Math.max(0, 22 * Math.max(0, wave(x, 2, 0.2)) - 8);
-    let h = 2 + Math.round(1.5 * Math.abs(wave(x, 11, 0.7)));
-    if (tall > 0 && x % 3 === 0) h += Math.round(tall + (x % 7));
+    const h = 2 + Math.round(1.5 * Math.abs(wave(x, 11, 0.7)) + (x % 5 === 0 ? 1 : 0));
     p.vline(x, p.h - h, h, d);
-    if (h > 12 && x % 9 === 0) p.rect(x - 1, p.h - h - 3, 3, 4, "#4a3a22");
   }
+  // cattail stands in the bottom corners, away from the fighters
+  cattails(p, 14, 26, 1);
+  cattails(p, 26, 18, 4);
+  cattails(p, 300, 22, 2);
 };
 
 const field: Battlefield = {

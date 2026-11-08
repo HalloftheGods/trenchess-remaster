@@ -1,7 +1,7 @@
 import type { Battlefield } from "../../field";
 import { TILE_W, wave, type PixelPainter } from "../../painter";
 import type { Grid } from "../../sheet";
-import { NEON, nightSky, smog, strata } from "./common";
+import { NEON, halo, nightSky, skyline, smog, strata } from "./common";
 
 /**
  * Neon City "Sunken Realm": the toxic works. A sickly green smog over the night sky, a far
@@ -38,6 +38,17 @@ const paintSky = (p: PixelPainter): void => {
 
 const paintSmog = (p: PixelPainter): void => {
   smog(p, [[0, 44, 70], [120, 36, 40], [170, 52, 64], [250, 30, 56]], SMOG.hi, SMOG.lo);
+};
+
+/** The glass city across the marsh, hazed green by the works' fumes. */
+const CITY = { walls: ["#10241f", "#122820", "#0f221d"], rim: "#1a362a", windows: ["#24543c", "#2e6a44", "#3a7e4a"], haze: "#1c3e26" };
+
+const paintCity = (p: PixelPainter): void => {
+  halo(p, 70, 104, 46, "#173322", 5);
+  halo(p, 236, 104, 40, "#173322", 5);
+  skyline(p, { seed: 61, base: 100, bottom: 104, minH: 14, maxH: 52, minW: 7, maxW: 18, gap: 3, walls: CITY.walls, rim: CITY.rim, windows: CITY.windows, litChance: 0.14, beacon: "#ff3b5a" });
+  p.dither(0, 86, TILE_W, 8, CITY.haze, 4);
+  p.dither(0, 94, TILE_W, 10, CITY.haze, 9);
 };
 
 // ---------------------------------------------------------------- refinery
@@ -276,6 +287,7 @@ const field: Battlefield = {
   layers: [
     { parallax: 0.05, paint: paintSky },
     { parallax: 0.08, drift: 2, paint: paintSmog },
+    { parallax: 0.12, paint: paintCity },
     { parallax: 0.2, paint: paintWorks },
     { parallax: 0.5, paint: paintPipes },
     { parallax: 1, paint: paintGround },
