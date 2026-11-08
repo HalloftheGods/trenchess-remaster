@@ -57,6 +57,7 @@ class Music {
   private lastBass = 0;
   private score: Score | null = null;
   private scoreBeatAt = 0;
+  private sampledAt = 0;
   private level = storedVolume();
   private listeners = new Set<MusicListener>();
 
@@ -150,8 +151,11 @@ class Music {
     return () => this.listeners.delete(cb);
   }
 
-  /** Current band levels for visuals; cheap enough to call every frame. */
+  /** Current band levels for visuals; cheap enough to call every frame (memoised per frame). */
   levels(): Levels {
+    const now = performance.now();
+    if (now - this.sampledAt < 8) return this.smooth;
+    this.sampledAt = now;
     if (!this.analyser || !this.bins || !this.playing) {
       this.smooth.beat = false;
       this.smooth.bass *= 0.9;
@@ -168,7 +172,7 @@ class Music {
     const bass = band(1, 6);
     const mid = band(6, 30);
     const high = Math.min(1, band(30, 90) * 2.2);
-    const scoreBeat = performance.now() - this.scoreBeatAt < 60;
+    const scoreBeat = now - this.scoreBeatAt < 60;
     this.smooth.beat = scoreBeat || (bass - this.lastBass > 0.12 && bass > 0.5);
     this.lastBass = bass;
     this.smooth.bass += (bass - this.smooth.bass) * 0.25;
