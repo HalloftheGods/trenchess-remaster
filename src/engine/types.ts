@@ -36,7 +36,7 @@ export interface Outcome {
 }
 
 export interface TurnEvent {
-  kind: "order" | "perish" | "promote" | "turn";
+  kind: "order" | "perish" | "promote" | "turn" | "recall";
   player: PlayerId;
   order?: Order;
   victims: Unit[];
@@ -49,6 +49,10 @@ export interface GameState {
   current: PlayerId;
   ordersPerTurn: number;
   ordersLeft: number;
+  /** Command check rule: a check ends the turn, and a check on the 2nd order sends the 1st piece back. */
+  checkEndsTurn: boolean;
+  /** Board as it stood before this turn's first order, kept so a checking 2nd order can recall the 1st. */
+  turnStart: TurnStart | null;
   acted: number[];
   turn: number;
   outcome: Outcome | null;
@@ -56,6 +60,13 @@ export interface GameState {
   nextId: number;
 }
 
+export interface TurnStart {
+  board: Cell[][];
+  fallen: Unit[][];
+}
+
 export interface GameConfig {
   ordersPerTurn: number;
+  /** Defaults to true. */
+  checkEndsTurn?: boolean;
 }

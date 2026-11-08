@@ -344,6 +344,10 @@ export class Match {
       this.hud.log(e, before);
       await this.units.perish(e.victims[0], e.at);
     }
+    if (e.kind === "recall") {
+      this.hud.log(e, before);
+      this.units.sync(s.board);
+    }
     if (e.kind === "turn" && !s.outcome) this.announceTurn();
   }
 
