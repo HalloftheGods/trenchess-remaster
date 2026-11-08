@@ -11,7 +11,7 @@ const TERRAIN = "Forests stop rooks and knights, swamps stop bishops and knights
 
 const KINDS: Terrain[] = ["forest", "swamp", "mountain", "desert"];
 
-const CHOICES: Choice[] = KINDS.map((t) => ({ id: t, label: TERRAIN_LORE[t].name, hint: TERRAIN_LORE[t].text }));
+const CHOICES: Choice[] = KINDS.map((t) => ({ id: t, label: TERRAIN_LORE[t].name }));
 
 const PORTRAIT = 0.5;
 
@@ -34,18 +34,17 @@ export const terrainPage: PageBuilder = (ctx) => {
     subtitle.setText(TERRAIN_LORE[t].subtitle);
     shown.forEach((o) => o.destroy());
     shown = [];
-    blockedTitle.setText(blocked.length ? "Impassable for:" : "Home to all, but none can stay:");
+    blockedTitle.setText(blocked.length ? "Impassable for:" : "Home to all, but none can stay.");
     blocked.forEach((type: UnitType, i) => {
       const x = PAD + 10 + i * 150;
-      const img = s.add.image(x + 16, listTop.y, unitKey(type, 0)).setOrigin(0.5, 0).setScale(PORTRAIT).setTint(0x9a9a9a);
-      const name = s.add.text(x + 40, listTop.y + 8, `${UNIT_LORE[type].title}\n${UNIT_LORE[type].chess}`, { ...PAGE_TEXT.small, color: INK.dark }).setOrigin(0, 0);
+      const img = ctx.add(s.add.image(x + 16, listTop.y, unitKey(type, 0)).setOrigin(0.5, 0).setScale(PORTRAIT).setTint(0x9a9a9a));
+      const name = ctx.add(s.add.text(x + 40, listTop.y + 8, `${UNIT_LORE[type].title}\n${UNIT_LORE[type].chess}`, { ...PAGE_TEXT.small, color: INK.dark }).setOrigin(0, 0));
       shown.push(img, name);
-      ctx.objects.push(img, name);
     });
     rule.setText(t === "desert" ? "Deserts let anyone in but stop sliders, and units left idle there at the end of your turn perish." : TERRAIN_LORE[t].text);
   };
-  const seg = ctx.add(new Segmented(s, PAD, flow.y, INNER, CHOICES, "forest", pick));
-  flow.gap(seg.height + 2);
+  ctx.add(new Segmented(s, PAD, flow.y, INNER, CHOICES, "forest", pick));
+  flow.gap(52);
   subtitle.setY(flow.y);
   flow.gap(30);
   blockedTitle.setY(flow.y);

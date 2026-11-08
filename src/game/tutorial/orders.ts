@@ -46,7 +46,7 @@ export const ordersDemo = (t: Tutorial, hooks: DemoHooks): Demo => {
       if (!t.alive(token)) return;
       t.units.setSpent(spent());
     }
-    hooks.progress?.("Both orders given. The turn passes.");
+    hooks.progress?.("Turn passes");
   };
   const endState = (): void => {
     reset();

@@ -11,7 +11,7 @@ export interface NavActions {
   go: (index: number) => void;
 }
 
-const DOT_X = 14;
+const DOT_X = 20;
 const DOT_STEP = 22;
 
 /**
@@ -27,11 +27,11 @@ export class Nav extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, pages: number, actions: NavActions) {
     super(scene, 0, 0);
     const small = { small: true };
-    const back = new Button(scene, PAD, NAV_Y, "‹ Back", actions.back, { ...small, w: 84 });
-    const contents = new Button(scene, PAD + 92, NAV_Y, "Contents", actions.contents, { ...small, w: 104 });
-    this.prevBtn = new Button(scene, PAD + INNER - 160, NAV_Y, "‹ Prev", actions.prev, { ...small, w: 76 });
-    this.nextBtn = new Button(scene, PAD + INNER - 76, NAV_Y, "Next ›", actions.next, { ...small, w: 76 });
-    this.label = scene.add.text(PAD + 92 + 104 + (INNER - 160 - 196) / 2, NAV_Y + 18, "", { ...PAGE_TEXT.small, color: INK.soft }).setOrigin(0.5, 0.5);
+    const back = new Button(scene, PAD, NAV_Y, "‹ Back", actions.back, { ...small, w: 76 });
+    const contents = new Button(scene, PAD + 82, NAV_Y, "Contents", actions.contents, { ...small, w: 96 });
+    this.prevBtn = new Button(scene, PAD + INNER - 140, NAV_Y, "‹ Prev", actions.prev, { ...small, w: 66 });
+    this.nextBtn = new Button(scene, PAD + INNER - 66, NAV_Y, "Next ›", actions.next, { ...small, w: 66 });
+    this.label = scene.add.text(PAD + 178 + (INNER - 140 - 178) / 2, NAV_Y + 18, "", { ...PAGE_TEXT.small, fontSize: "14px", color: INK.soft }).setOrigin(0.5, 0.5);
     this.dots = Array.from({ length: pages }, (_, i) => this.dot(i, pages, actions.go));
     this.add([back, contents, this.prevBtn, this.nextBtn, this.label, ...this.dots]);
     scene.add.existing(this);
@@ -52,8 +52,8 @@ export class Nav extends Phaser.GameObjects.Container {
     return d;
   }
 
-  setPage(index: number, pages: number, caption: string): void {
-    this.label.setText(`${caption}  ·  ${index + 1} / ${pages}`);
+  setPage(index: number, pages: number): void {
+    this.label.setText(`${index + 1} / ${pages}`);
     this.prevBtn.setEnabled(index > 0);
     this.nextBtn.setEnabled(index < pages - 1);
     this.dots.forEach((d, i) => d.setTexture(i === index ? "ui-dot-on" : "ui-dot"));

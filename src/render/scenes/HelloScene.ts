@@ -43,6 +43,7 @@ export class HelloScene extends Phaser.Scene {
   private leaves: Leaf[] = [];
   private index = -1;
   private view: PageView | null = null;
+  private page: Phaser.GameObjects.Container | null = null;
   private objects: Phaser.GameObjects.GameObject[] = [];
   private unbindKeys: () => void = () => undefined;
   private swipeFrom: number | null = null;
@@ -112,10 +113,12 @@ export class HelloScene extends Phaser.Scene {
     this.closePage();
     this.index = i;
     const leaf = this.leaves[i];
+    this.page = this.add.container(0, 0);
+    this.root.addAt(this.page, 1);
     this.view = leaf.build(this.pageCtx());
-    this.nav.setPage(i, this.leaves.length, leaf.caption);
+    this.nav.setPage(i, this.leaves.length);
     if (window.__tcHello) window.__tcHello = { ...window.__tcHello, page: i };
-    slideIn(this, this.objects, dir > 0 ? "right" : "left", first ? 120 : 0, 36);
+    slideIn(this, [this.page], dir > 0 ? "right" : "left", first ? 120 : 0, 36);
     if (!first) sfx.select();
   }
 
@@ -125,7 +128,7 @@ export class HelloScene extends Phaser.Scene {
       tutorial: this.tutorial,
       objects: this.objects,
       add: (o) => {
-        this.root.add(o);
+        this.page?.add(o);
         this.objects.push(o);
         return o;
       },
@@ -138,7 +141,8 @@ export class HelloScene extends Phaser.Scene {
     this.view?.destroy();
     this.view = null;
     this.tutorial.stop();
-    this.objects.forEach((o) => o.destroy());
+    this.page?.destroy();
+    this.page = null;
     this.objects.length = 0;
   }
 

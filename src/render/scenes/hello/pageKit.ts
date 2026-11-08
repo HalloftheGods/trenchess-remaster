@@ -98,7 +98,10 @@ export class Flow {
 /** The chapter kicker and title at the top of a page. */
 export const headline = (ctx: PageCtx, kicker: string, title: string): void => {
   ctx.add(ctx.scene.add.text(PAD, 34, kicker.toUpperCase(), PAGE_TEXT.kicker).setOrigin(0, 0));
-  ctx.add(ctx.scene.add.text(PAD, 54, title, { ...PAGE_TEXT.title, wordWrap: { width: INNER } }).setOrigin(0, 0));
+  const t = ctx.add(ctx.scene.add.text(PAD, 54, title, PAGE_TEXT.title).setOrigin(0, 0));
+  for (const size of [26, 22]) {
+    if (t.width > INNER) t.setFontSize(size);
+  }
 };
 
 /** A marker-pen circle around a spot, drawn on in a few frames. */

@@ -18,13 +18,12 @@ const row = (ctx: Parameters<PageBuilder>[0], link: ChapterLink, y: number): voi
   const plate = ctx.add(nine(s, "ui-seg", 40, 40, "segment").setPosition(PAD, y + 4));
   const num = ctx.add(s.add.text(PAD + 20, y + 24, String(link.number), { fontFamily: FONT.display, fontSize: "18px", fontStyle: "700", color: COLOR.bone }).setOrigin(0.5, 0.5));
   const title = ctx.add(s.add.text(PAD + 54, y + 4, link.title, PAGE_TEXT.h3).setOrigin(0, 0));
-  const kicker = ctx.add(s.add.text(PAD + 54, y + 28, link.kicker, PAGE_TEXT.small).setOrigin(0, 0));
-  const page = ctx.add(s.add.text(PAD + INNER, y + 14, String(link.index + 1), { ...PAGE_TEXT.small, color: INK.faint }).setOrigin(1, 0));
+  ctx.add(s.add.text(PAD + 54, y + 28, link.kicker, PAGE_TEXT.small).setOrigin(0, 0));
+  ctx.add(s.add.text(PAD + INNER, y + 14, String(link.index + 1), { ...PAGE_TEXT.small, color: INK.faint }).setOrigin(1, 0));
   const dots = ctx.add(s.add.graphics());
   dots.lineStyle(1, Phaser.Display.Color.HexStringToColor(INK.faint).color, 0.5);
   for (let x = PAD + 54 + title.width + 10; x < PAD + INNER - 24; x += 6) dots.lineBetween(x, y + 20, x + 2, y + 20);
   const zone = ctx.add(hitZone(s, PAD, y, INNER, ROW_H - 6));
-  const parts = [plate, num, title, kicker, page];
   zone.on("pointerover", () => {
     hoverSfx();
     plate.setTexture("ui-seg-on");
@@ -40,7 +39,6 @@ const row = (ctx: Parameters<PageBuilder>[0], link: ChapterLink, y: number): voi
     pressSfx();
     ctx.go(link.index);
   });
-  ctx.objects.push(...parts);
 };
 
 /** Page 2, the contents: every chapter with its number, title and kicker; click one to turn to it. */
