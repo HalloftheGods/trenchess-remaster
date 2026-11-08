@@ -3,6 +3,7 @@ import type { Unit } from "../../engine/types";
 import { COLOR } from "../ui/fonts";
 import { FACTIONS } from "../art/unitArt";
 import type { DuelRequest } from "./duel";
+import { world as activeWorld } from "../art/worlds/registry";
 import { DuelBackdrop } from "./duelBackdrop";
 import { DuelFx } from "./duelFx";
 import { DuelHud } from "./duelHud";
@@ -61,7 +62,7 @@ export class DuelStage implements Clocked {
     this.front = scene.add.container(0, 0);
     this.ui = scene.add.container(0, 0);
     world.add([this.back, this.actors, this.front, this.ui]);
-    this.backdrop = new DuelBackdrop(scene, this.back, this.front, req.terrain, lw);
+    this.backdrop = new DuelBackdrop(scene, this.back, this.front, req.world ?? activeWorld.id, req.terrain, lw);
     this.dir = req.attackerOwner === 0 ? 1 : -1;
     const gap = (u: Unit): number => Math.round(Math.max(lw * 0.17, 46) + (u.type === "knight" || u.type === "queen" ? 14 : 0));
     this.aHome = Math.round(lw / 2 - this.dir * gap(req.attacker));

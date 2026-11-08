@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import type { Terrain } from "../../engine/types";
 import type { AmbientKind } from "./pixel/field";
-import { FIELDS } from "./pixel/fields";
+import type { WorldId } from "../art/worlds/registry";
+import { fieldFor } from "./pixel/fields/worlds";
 import { SCREEN_H } from "./pixel/painter";
 import { layerKey, paintField } from "./pixel/textures";
 
@@ -13,6 +14,10 @@ const AMBIENT: Record<Exclude<AmbientKind, "none">, (w: number) => Phaser.Types.
   leaves: (w) => ({ key: "px-leaf", lifespan: 7000, frequency: 340, speedX: { min: -6, max: 4 }, speedY: { min: 8, max: 16 }, alpha: { start: 1, end: 0.3 }, emitZone: zone(w, 0, 20) }),
   fireflies: (w) => ({ key: "px-dot", lifespan: 3000, frequency: 220, speedX: { min: -4, max: 4 }, speedY: { min: -5, max: 2 }, alpha: { start: 1, end: 0 }, blendMode: Phaser.BlendModes.ADD, emitZone: zone(w, 60, 140) }),
   snow: (w) => ({ key: "px-dot", lifespan: 7000, frequency: 70, speedX: { min: -14, max: -5 }, speedY: { min: 10, max: 22 }, alpha: { start: 1, end: 0.4 }, emitZone: zone(w, 0, 10) }),
+  embers: (w) => ({ key: "px-dot", lifespan: 3200, frequency: 120, speedX: { min: -6, max: 6 }, speedY: { min: -26, max: -12 }, alpha: { start: 1, end: 0 }, blendMode: Phaser.BlendModes.ADD, emitZone: zone(w, 110, 160) }),
+  rain: (w) => ({ key: "px-dot", lifespan: 900, frequency: 18, speedX: { min: -30, max: -24 }, speedY: { min: 150, max: 190 }, scaleY: { min: 2, max: 3 }, alpha: { start: 0.7, end: 0.4 }, emitZone: zone(w, -10, 0) }),
+  ash: (w) => ({ key: "px-dot", lifespan: 8000, frequency: 160, speedX: { min: -8, max: -2 }, speedY: { min: 4, max: 10 }, alpha: { start: 0.9, end: 0.2 }, emitZone: zone(w, 0, 40) }),
+  motes: (w) => ({ key: "px-dot", lifespan: 2400, frequency: 150, speedX: { min: -2, max: 2 }, speedY: { min: -12, max: -4 }, alpha: { start: 1, end: 0 }, blendMode: Phaser.BlendModes.ADD, emitZone: zone(w, 40, 150) }),
   sand: (w) => ({ key: "px-dot", lifespan: 2600, frequency: 40, speedX: { min: -90, max: -50 }, speedY: { min: -3, max: 3 }, alpha: { start: 0.9, end: 0 }, emitZone: zone(w, 90, 150) }),
 };
 
@@ -28,12 +33,12 @@ export class DuelBackdrop {
   private readonly emitters: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
   private scroll = 0;
 
-  constructor(scene: Phaser.Scene, back: Phaser.GameObjects.Container, front: Phaser.GameObjects.Container, terrain: Terrain, w: number) {
-    const field = FIELDS[terrain];
-    paintField(scene, terrain);
+  constructor(scene: Phaser.Scene, back: Phaser.GameObjects.Container, front: Phaser.GameObjects.Container, world: WorldId, terrain: Terrain, w: number) {
+    const field = fieldFor(world, terrain);
+    paintField(scene, world, terrain);
     const start = Math.floor(Math.random() * 320);
     field.layers.forEach((layer, i) => {
-      const sprite = scene.add.tileSprite(0, 0, w, SCREEN_H, layerKey(terrain, i)).setOrigin(0, 0);
+      const sprite = scene.add.tileSprite(0, 0, w, SCREEN_H, layerKey(world, terrain, i)).setOrigin(0, 0);
       sprite.tilePositionX = Math.round(start * layer.parallax);
       this.layers.push({ sprite, parallax: layer.parallax, drift: layer.drift ?? 0 });
       (layer.front ? front : back).add(sprite);

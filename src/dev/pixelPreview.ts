@@ -1,6 +1,11 @@
 import type { Terrain, UnitType } from "../engine/types";
 import { PALETTES } from "../render/art/unitArt";
 import { FIELDS } from "../render/duel/pixel/fields";
+import { fieldFor } from "../render/duel/pixel/fields/worlds";
+import { WORLD_ORDER, type WorldId } from "../render/art/worlds/registry";
+
+let previewWorld: WorldId = "classic";
+const fieldOf = (t: Terrain) => fieldFor(previewWorld, t);
 import { FONT, FONT_H, FONT_W } from "../render/duel/pixel/font";
 import { FX, FX_PALETTE, type FxId } from "../render/duel/pixel/fx";
 import { PixelPainter, SCREEN_H, TILE_W, FLOOR_Y } from "../render/duel/pixel/painter";
@@ -39,7 +44,7 @@ const cell = (label: string, el: HTMLElement): HTMLElement => {
 };
 
 const paintField = (t: Terrain, g: CanvasRenderingContext2D, w: number, onlyLayer?: number, withFront = true): void => {
-  FIELDS[t].layers.forEach((layer, i) => {
+  fieldOf(t).layers.forEach((layer, i) => {
     if (onlyLayer !== undefined && onlyLayer !== i) return;
     if (!withFront && layer.front) return;
     const [lc, lg] = canvas(TILE_W, SCREEN_H, 1);
@@ -84,18 +89,18 @@ const spriteSection = (type: UnitType): HTMLElement => {
 };
 
 const fieldSection = (t: Terrain): HTMLElement => {
-  const s = block(`battlefield ${t} — ${FIELDS[t].layers.length} layers, ambient ${FIELDS[t].ambient}`);
+  const s = block(`battlefield ${previewWorld} / ${t} — ${fieldOf(t).layers.length} layers, ambient ${fieldOf(t).ambient}`);
   const [c, g] = canvas(TILE_W * 2, SCREEN_H, 2);
   paintField(t, g, TILE_W * 2, undefined, false);
   const king = SHEETS.king;
   drawGrid(g, king.frames.idle0, armyPalette(PALETTES.royal[0], king.palette), 200 - king.foot[0], FLOOR_Y - king.foot[1]);
   const knight = SHEETS.knight;
   drawGrid(g, knight.frames.idle0.map((r) => r.split("").reverse().join("")), armyPalette(PALETTES.royal[1], knight.palette), 440 - (knight.w - 1 - knight.foot[0]), FLOOR_Y - knight.foot[1]);
-  paintField(t, g, TILE_W * 2, FIELDS[t].layers.findIndex((l) => l.front));
+  paintField(t, g, TILE_W * 2, fieldOf(t).layers.findIndex((l) => l.front));
   s.append(cell("two tiles side by side (seam at x=320), fighters on the floor line, foreground on top", c));
   const row = document.createElement("div");
   row.className = "grid";
-  FIELDS[t].layers.forEach((l, i) => {
+  fieldOf(t).layers.forEach((l, i) => {
     const [lc, lg] = canvas(TILE_W, SCREEN_H, 1.5);
     lc.classList.add("checker");
     paintField(t, lg, TILE_W, i);
@@ -147,7 +152,14 @@ export const mountPixelPreview = (what: string): void => {
   const types = Object.keys(SHEETS) as UnitType[];
   const fields = Object.keys(FIELDS) as Terrain[];
   if (kind === "sprite") root.append(spriteSection(name as UnitType));
-  else if (kind === "bg") root.append(fieldSection(name as Terrain));
+  else if (kind === "bg") {
+    // bg:<terrain> (Classic), bg:<world>/<terrain>, or bg:<world> for all five terrains of a world
+    const [a, b] = name.split("/");
+    const isWorld = (WORLD_ORDER as string[]).includes(a);
+    previewWorld = isWorld ? (a as WorldId) : "classic";
+    if (isWorld && !b) fields.forEach((t) => root.append(fieldSection(t)));
+    else root.append(fieldSection((b ?? a) as Terrain));
+  }
   else if (kind === "fx") root.append(fxSection());
   else {
     types.forEach((t) => root.append(spriteSection(t)));

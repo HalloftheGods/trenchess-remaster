@@ -1,3 +1,4 @@
+import type { WorldId } from "../art/worlds/registry";
 import type { PlayerId, Terrain, Unit } from "../../engine/types";
 
 /** How a capture is shown: no cutscene, a 0.7 s duel, or the full 1.6 s duel. */
@@ -12,6 +13,8 @@ export interface DuelRequest {
   mode?: DuelMode;
   /** True when the capture used the chessman's upgraded move, so it plays its named ability; false plays its classic attack. Default true. */
   special?: boolean;
+  /** The match's world: picks that world's battlefield set. Default: the active world. */
+  world?: WorldId;
 }
 
 export interface DuelHost {

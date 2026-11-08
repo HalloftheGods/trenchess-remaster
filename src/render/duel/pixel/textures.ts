@@ -2,7 +2,8 @@ import Phaser from "phaser";
 import type { Terrain, Unit } from "../../../engine/types";
 import { addPainted } from "../../art/canvas";
 import { FACTIONS, theme } from "../../art/unitArt";
-import { FIELDS } from "./fields";
+import type { WorldId } from "../../art/worlds/registry";
+import { fieldFor } from "./fields/worlds";
 import { FONT, FONT_H, FONT_W } from "./font";
 import { FX, FX_PALETTE, type FxId } from "./fx";
 import { PixelPainter, SCREEN_H, TILE_W } from "./painter";
@@ -75,10 +76,10 @@ export const paintFx = (scene: Phaser.Scene): void => {
   });
 };
 
-export const layerKey = (t: Terrain, i: number): string => `pxbg-${t}-${i}`;
+export const layerKey = (w: WorldId, t: Terrain, i: number): string => `pxbg-${w}-${t}-${i}`;
 
-export const paintField = (scene: Phaser.Scene, t: Terrain): void => {
-  FIELDS[t].layers.forEach((layer, i) => canvasTexture(scene, layerKey(t, i), TILE_W, SCREEN_H, (g) => layer.paint(new PixelPainter(g, TILE_W, SCREEN_H, 7 + i * 13))));
+export const paintField = (scene: Phaser.Scene, w: WorldId, t: Terrain): void => {
+  fieldFor(w, t).layers.forEach((layer, i) => canvasTexture(scene, layerKey(w, t, i), TILE_W, SCREEN_H, (g) => layer.paint(new PixelPainter(g, TILE_W, SCREEN_H, 7 + i * 13))));
 };
 
 /** Renders `text` in the bitmap font to a texture: `scale` 1 or 2, with a 1px drop shadow. */

@@ -1,7 +1,7 @@
 import type { Terrain } from "../../../engine/types";
 import type { PixelPainter } from "./painter";
 
-export type AmbientKind = "pollen" | "leaves" | "fireflies" | "snow" | "sand" | "none";
+export type AmbientKind = "pollen" | "leaves" | "fireflies" | "snow" | "sand" | "embers" | "rain" | "ash" | "motes" | "none";
 
 /** One parallax layer of a battlefield: a TILE_W x SCREEN_H tile, transparent where it shows the layer behind. */
 export interface PixelLayer {
