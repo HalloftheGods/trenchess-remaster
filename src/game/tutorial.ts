@@ -2,6 +2,7 @@ import type Phaser from "phaser";
 import type { Cell, Order, Pos, Terrain } from "../engine/types";
 import { emptyGrid } from "../engine/game";
 import { pseudoMovesFor } from "../engine/moves";
+import { setBoard } from "../engine/rules";
 import type { BattleScene } from "../render/scenes/BattleScene";
 import type { BoardView } from "../render/board/BoardView";
 import type { UnitView } from "../render/board/UnitView";
@@ -36,7 +37,12 @@ export class Tutorial {
   private moving = false;
   private onClick: ((cell: Pos) => void) | null = null;
 
-  constructor(private scene: BattleScene) {}
+  /** The tome's demos are laid out for the 12×12 Trench; the board view rebuilds itself to match. */
+  constructor(private scene: BattleScene) {
+    setBoard("extended");
+    this.board = emptyGrid<Cell>(null);
+    this.terrain = emptyGrid<Terrain>("flat");
+  }
 
   get boardView(): BoardView {
     return this.scene.board;
