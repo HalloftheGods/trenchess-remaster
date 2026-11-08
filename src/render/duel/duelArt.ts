@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { Unit, UnitType } from "../../engine/types";
-import { shade } from "../art/canvas";
+import { addPainted, shade } from "../art/canvas";
 import { FACTIONS, theme, type Faction } from "../art/unitArt";
 
 /**
@@ -460,7 +460,7 @@ const paintPart = (scene: Phaser.Scene, key: string, spec: PartSpec, draw: (g: G
   const g = canvas.getContext("2d")!;
   g.scale(RES, RES);
   draw(g);
-  scene.textures.addCanvas(key, canvas);
+  addPainted(scene, key, canvas);
 };
 
 /** The parts a chessman's rig is built from. */

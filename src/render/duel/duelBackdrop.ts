@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { Terrain } from "../../engine/types";
-import { rand } from "../art/canvas";
+import { addPainted, rand } from "../art/canvas";
 import { FX } from "./duelFx";
 
 /** Size of one painted backdrop layer; layers tile horizontally (every shape wraps at BW). */
@@ -389,7 +389,7 @@ const paintLayer = (scene: Phaser.Scene, k: string, painter: (g: G) => void): vo
   canvas.width = BW;
   canvas.height = BH;
   painter(canvas.getContext("2d")!);
-  scene.textures.addCanvas(k, canvas);
+  addPainted(scene, k, canvas);
 };
 
 interface Ambience {
