@@ -1,6 +1,7 @@
 import { sfx } from "./sfx";
 import { Deck, type Mood, type Track } from "./playlist";
 import { Score } from "./score";
+import { SHUFFLE_KEY, VOLUME_KEY, store, stored, storedVolume } from "./prefs";
 
 /** Smoothed loudness per band, 0..1, plus a beat flag on frames where the bass just jumped. */
 export interface Levels {
@@ -13,31 +14,7 @@ export interface Levels {
 export type MusicListener = () => void;
 
 const FADE = 1.2;
-const VOLUME_KEY = "trenchess-volume";
-const SHUFFLE_KEY = "trenchess-shuffle";
 const AMBIENCE: Track = { title: "Trench Ambience", file: "", mood: "title" };
-
-const stored = (key: string): string | null => {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-
-const store = (key: string, value: string): void => {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* private mode: the setting lives for this session only */
-  }
-};
-
-const storedVolume = (): number => {
-  const v = Number(stored(VOLUME_KEY));
-  return Number.isFinite(v) && stored(VOLUME_KEY) !== null ? Math.min(1, Math.max(0, v)) : 0.8;
-};
-
 /**
  * Streams the soundtrack through the shared audio bus with an analyser on it, so visuals can
  * follow the music. Tracks come from src/audio/playlist.ts; with none listed, the generative
