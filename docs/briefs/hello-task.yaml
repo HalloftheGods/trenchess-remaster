@@ -1,0 +1,5 @@
+- ref: hello
+  title: "Hello Trenchess as an interactive in-engine tutorial"
+  parent: 1
+  prio: 1
+  brief_file: hello-tutorial.md
