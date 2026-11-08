@@ -46,7 +46,9 @@ export const dress = (s: TileSprites, r: number, c: number, p: Projection): void
   const t = s.terrain;
   const squash = ySquash();
   if (p !== "iso") {
-    s.tile.setTexture(tileTopKey(t, isLight(r, c), v)).setOrigin(0.5, 0.5).setScale(1, squash);
+    // in the front view forests and peaks stand up as decor, so their ground is plain
+    const ground = p === "front" && (t === "forest" || t === "mountain") ? "flat" : t;
+    s.tile.setTexture(tileTopKey(ground, isLight(r, c), v)).setOrigin(0.5, 0.5).setScale(1, squash);
     s.glint.setScale(0.8, 0.8 * squash);
   } else {
     s.tile.setTexture(tileKey(t, isLight(r, c), v)).setOrigin(0.5, TILE_ORIGIN_Y).setScale(1, 1);
@@ -56,8 +58,8 @@ export const dress = (s: TileSprites, r: number, c: number, p: Projection): void
   // the front view keeps the standing decor so the table reads in depth; the top view lets the tile carry it
   const decorated = t !== "flat" && p !== "top";
   if (p === "front") {
-    s.back.setOrigin(0.5, 1).setScale(0.8);
-    s.front.setOrigin(0.5, 1).setScale(0.8);
+    s.back.setOrigin(0.5, 1).setScale(0.9);
+    s.front.setOrigin(0.5, 1).setScale(0.9);
   } else {
     s.back.setOrigin(0.5, TILE_ORIGIN_Y).setScale(1);
     s.front.setOrigin(0.5, TILE_ORIGIN_Y).setScale(1);
@@ -77,7 +79,7 @@ export const movesFor = (s: TileSprites, r: number, c: number, out: TileMove[]):
   out[0].obj = s.tile;
   out[0].y = y;
   out[0].layer = LAYER.tile;
-  const foot = getProjection() === "front" ? (TOP_TILE_HALF * ySquash()) / 2 : 0;
+  const foot = getProjection() === "front" ? TOP_TILE_HALF * ySquash() - 3 : 0;
   out[1].obj = s.back;
   out[1].y = y - lift + foot;
   out[1].layer = LAYER.backDecor;

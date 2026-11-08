@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { TILE_H, TILE_W, TOP_TILE } from "../iso";
+import { FRONT_SQUASH, TILE_H, TILE_W, TOP_TILE } from "../iso";
 import { diamondPath, ellipse, paint, rand } from "./canvas";
 import type { PlinthMaterial } from "./worlds/recipe";
 import { recipe, world } from "./worlds/registry";
@@ -37,6 +37,16 @@ export const plinthTop = (n: number): PlinthSpec => ({
   height: n * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
   anchorX: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
   anchorY: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
+  n,
+});
+
+/** The front view: the square slab foreshortened, with its front face showing under the top. */
+export const plinthFront = (n: number): PlinthSpec => ({
+  key: `plinth-front-${n}`,
+  width: n * TOP_TILE + 2 * PLINTH_MARGIN + 2 * DROP,
+  height: Math.round((n * TOP_TILE + 2 * PLINTH_MARGIN) * FRONT_SQUASH) + THICK + DROP + 2 * DROP,
+  anchorX: (n / 2) * TOP_TILE + PLINTH_MARGIN + DROP,
+  anchorY: Math.round(((n / 2) * TOP_TILE + PLINTH_MARGIN) * FRONT_SQUASH) + DROP,
   n,
 });
 
@@ -191,6 +201,67 @@ const drawTop = (m: PlinthMaterial, spec: PlinthSpec) => (g: CanvasRenderingCont
   bevel(g, [[cx - half, cy + half], [cx - half, cy - half], [cx + half, cy - half]], [[cx + half, cy - half], [cx + half, cy + half], [cx - half, cy + half]]);
 };
 
+const drawFront = (m: PlinthMaterial, spec: PlinthSpec) => (g: CanvasRenderingContext2D): void => {
+  const { anchorX: cx, anchorY: cy, width, height, n } = spec;
+  const half = (n / 2) * TOP_TILE + PLINTH_MARGIN;
+  const halfY = half * FRONT_SQUASH;
+  const top = cy - halfY;
+  const bottom = cy + halfY;
+  // shadow on the ground under the front face
+  g.filter = "blur(14px)";
+  g.fillStyle = "rgba(0,0,0,0.6)";
+  g.fillRect(cx - half - 6, bottom + THICK - 10, half * 2 + 12, 30);
+  g.filter = "none";
+  // front face
+  const face = g.createLinearGradient(0, bottom, 0, bottom + THICK);
+  face.addColorStop(0, m.sideRight);
+  face.addColorStop(1, m.sideLeft);
+  g.fillStyle = face;
+  g.fillRect(cx - half, bottom, half * 2, THICK);
+  g.strokeStyle = m.groove;
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(cx - half, bottom + THICK * 0.55);
+  g.lineTo(cx + half, bottom + THICK * 0.55);
+  g.stroke();
+  g.strokeStyle = m.ridge;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(cx - half, bottom + THICK * 0.55 + 3);
+  g.lineTo(cx + half, bottom + THICK * 0.55 + 3);
+  g.stroke();
+  // top face
+  g.fillStyle = stoneFill(g, m, cx - half, top, cx + half, bottom);
+  g.fillRect(cx - half, top, half * 2, halfY * 2);
+  g.save();
+  g.beginPath();
+  g.rect(cx - half, top, half * 2, halfY * 2);
+  g.clip();
+  grain(g, 900, 79, width, height);
+  for (const inset of [12, 26]) {
+    const iy = inset * FRONT_SQUASH;
+    g.strokeStyle = m.ridge;
+    g.lineWidth = 1.5;
+    g.strokeRect(cx - half + inset, top + iy + 1.5, (half - inset) * 2, (halfY - iy) * 2);
+    g.strokeStyle = m.groove;
+    g.lineWidth = 2;
+    g.strokeRect(cx - half + inset, top + iy, (half - inset) * 2, (halfY - iy) * 2);
+  }
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) rosette(g, m, cx + sx * (half - 19), cy + sy * (halfY - 19 * FRONT_SQUASH), 7, 7 * FRONT_SQUASH);
+  contactShadow(g, () => {
+    g.beginPath();
+    g.rect(cx - (n / 2) * TOP_TILE - 3, cy - (n / 2) * TOP_TILE * FRONT_SQUASH - 3, n * TOP_TILE + 6, n * TOP_TILE * FRONT_SQUASH + 6);
+  });
+  g.restore();
+  bevel(g, [[cx - half, bottom], [cx - half, top], [cx + half, top]], [[cx + half, top], [cx + half, bottom], [cx - half, bottom]]);
+  g.strokeStyle = "rgba(0,0,0,0.5)";
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx - half, bottom + THICK);
+  g.lineTo(cx + half, bottom + THICK);
+  g.stroke();
+};
+
 export const PLINTH_SIZES = [8, 12];
 
 /** Paints both plinths of every board size for the active world; already-painted worlds are skipped. */
@@ -199,7 +270,9 @@ export const paintPlinth = (scene: Phaser.Scene): void => {
   for (const n of PLINTH_SIZES) {
     const iso = plinthIso(n);
     const top = plinthTop(n);
+    const front = plinthFront(n);
     paint(scene, plinthKey(iso), iso.width, iso.height, drawIso(m, iso));
     paint(scene, plinthKey(top), top.width, top.height, drawTop(m, top));
+    paint(scene, plinthKey(front), front.width, front.height, drawFront(m, front));
   }
 };
